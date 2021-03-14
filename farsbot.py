@@ -12,6 +12,9 @@ logging.basicConfig(filename="farsbot.log", level=logging.DEBUG)
 def sample_soundclip(soundbase="sounds", ending=".wav"):
     return random.choice(glob.glob("{}/*{}".format(soundbase, ending)))
 
+def get_random_fars_image():
+    return random.choice(glob.glob("{}/*{}".format("fars", ".jpg")))
+
 def load_token(filename="token.json"):
     with open(filename) as handle:
         js = json.load(handle)
@@ -49,6 +52,10 @@ class FarsBot(commands.Cog):
         client = self.bot.voice_clients[0]
         src = discord.PCMVolumeTransformer(discord.FFmpegPCMAudio(sample_soundclip()))
         client.play(src, after=lambda e: print('Player error %s' % e) if e else None)
+
+    @commands.command()
+    async def fars(self, ctx):
+        await ctx.channel.send(file=get_random_fars_image())
 
 
 bot = commands.Bot(
