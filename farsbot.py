@@ -41,15 +41,15 @@ class FarsBot(commands.Cog):
     @commands.Cog.listener()
     async def on_voice_state_update(self, member, before, after):
         if after.channel == None:
-            # ingen kanal i post-event VoiceState => usern lamnade kanalen.
             pass
         else:
-            if before.channel == None:
-                # combon before.channel == None och after.channel != None 
-                # betyder att eventen var att en anvandare connectade.
-                client = self.bot.voice_clients[0]
-                src = discord.PCMVolumeTransformer(discord.FFmpegPCMAudio(sample_soundclip()))
-                client.play(src, after=lambda e: print('Player error: %s' % e) if e else None)
+            if before.channel == None or before.channel.id != after.channel.id:
+                if member.bot:
+                    pass
+                else:
+                    client = self.bot.voice_clients[0]
+                    src = discord.PCMVolumeTransformer(discord.FFmpegPCMAudio(sample_soundclip()))
+                    client.play(src, after=lambda e: print('Player error: %s' % e) if e else None)
             
 
 bot = commands.Bot(
