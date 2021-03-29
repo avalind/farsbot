@@ -25,6 +25,12 @@ class FarsBot(commands.Cog):
         self.bot = bot
 
     @commands.command()
+    async def farsljud(self, ctx):
+        client = self.bot.voice_clients[0]
+        src = discord.PCMVolumeTransformer(discord.FFmpegPCMAudio(sample_soundclip()))
+        client.play(src, after=lambda e: print('Player error: %s' % e) if e else None)
+
+    @commands.command()
     async def fars(self, ctx):
         await ctx.channel.send(file=discord.File(get_random_fars_image()))
 
