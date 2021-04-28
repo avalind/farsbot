@@ -10,19 +10,33 @@ from discord.ext import commands
 
 logging.basicConfig(filename="farsbot.log", level=logging.DEBUG)
 
+base_dir_sounds = "sounds"
+base_dir_images = "images"
+
+user_id_anders = 801923008532578354;
+user_id_fritjof = 560877870076133378;
+user_id_kristian = 662052476387721266;
+user_id_linus = 151723245366673408;
+user_id_max = 140887080048787456;
+user_id_nils = 486859100026699789;
+user_id_philip = 817454700882296843;
+user_id_rickard = 184294174206459904;
+
+def get_sound_with_name(sound_name):
+    return glob.glob("{}/*/{}".format(base_dir_sounds, sound_name))
+
 def get_random_fars_sound(sound_dir="", ending=".wav"):
-    base_dir = "sounds"
-    valid_dirs = next(os.walk(base_dir))[1]
+    valid_dirs = next(os.walk(base_dir_sounds))[1]
     if sound_dir in valid_dirs:
-        return random.choice(glob.glob("{}/{}/*{}".format(base_dir, sound_dir, ending)))
-    return random.choice(glob.glob("{}/*/*{}".format(base_dir, ending)))
+        return random.choice(glob.glob("{}/{}/*{}".format(base_dir_sounds, sound_dir, ending)))
+    return random.choice(glob.glob("{}/*/*{}".format(base_dir_sounds, ending)))
 
 def get_random_fars_image(img_dir="", ending=".jpg"):
-    base_dir = "images"
-    valid_dirs = next(os.walk(base_dir))[1]
+    base_dir_images = "images"
+    valid_dirs = next(os.walk(base_dir_images))[1]
     if img_dir in valid_dirs:
-        return random.choice(glob.glob("{}/{}/*{}".format(base_dir, img_dir, ending)))
-    return random.choice(glob.glob("{}/*/*{}".format(base_dir, ending)))
+        return random.choice(glob.glob("{}/{}/*{}".format(base_dir_images, img_dir, ending)))
+    return random.choice(glob.glob("{}/*/*{}".format(base_dir_images, ending)))
 
 def load_token(filename="token.json"):
     with open(filename) as handle:
@@ -62,10 +76,31 @@ class FarsBot(commands.Cog):
                 if member.bot:
                     pass
                 else:
+                    soundPath = ""
+                    match member.id:
+                        case user_id_anders:
+                            soundPath = get_sound_with_name("vinslov_moven.wav")
+                        case user_id_fritjof:
+                            soundPath = get_sound_with_name("radooradooradooradoo.wav")
+                        case user_id_kristian:
+                            soundPath = get_sound_with_name("Har_du_tur_sa_kommer_det_ett_fax.wav")
+                        case user_id_linus:
+                            soundPath = get_sound_with_name("jövvla_jag_känner.wav")
+                        case user_id_max:
+                            soundPath = get_sound_with_name("campa_i_klaveret_intro.wav")
+                        case user_id_nils:
+                            soundPath = get_sound_with_name("A_har_nat_frunntimmer.wav")
+                        case user_id_philip:
+                            soundPath = get_sound_with_name("Hasten_sa_va_fan.wav")
+                        case user_id_rickard:
+                            soundPath = get_sound_with_name("Nar_hon_var_pa_djurparken.wav")
+                        case _:
+                            soundPath = get_random_fars_sound()
+
                     client = self.bot.voice_clients[0]
-                    src = discord.PCMVolumeTransformer(discord.FFmpegPCMAudio(get_random_fars_sound()))
+                    src = discord.PCMVolumeTransformer(discord.FFmpegPCMAudio(soundPath))
                     client.play(src, after=lambda e: print('Player error: %s' % e) if e else None)
-            
+
 
 bot = commands.Bot(
     command_prefix=commands.when_mentioned_or("!"),
