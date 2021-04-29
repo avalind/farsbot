@@ -77,25 +77,24 @@ class FarsBot(commands.Cog):
                     pass
                 else:
                     soundPath = ""
-                    match member.id:
-                        case user_id_anders:
-                            soundPath = get_sound_with_name("vinslov_moven.wav")
-                        case user_id_fritjof:
-                            soundPath = get_sound_with_name("radooradooradooradoo.wav")
-                        case user_id_kristian:
-                            soundPath = get_sound_with_name("Har_du_tur_sa_kommer_det_ett_fax.wav")
-                        case user_id_linus:
-                            soundPath = get_sound_with_name("jövvla_jag_känner.wav")
-                        case user_id_max:
-                            soundPath = get_sound_with_name("campa_i_klaveret_intro.wav")
-                        case user_id_nils:
-                            soundPath = get_sound_with_name("A_har_nat_frunntimmer.wav")
-                        case user_id_philip:
-                            soundPath = get_sound_with_name("Hasten_sa_va_fan.wav")
-                        case user_id_rickard:
-                            soundPath = get_sound_with_name("Nar_hon_var_pa_djurparken.wav")
-                        case _:
-                            soundPath = get_random_fars_sound()
+                    if user_id_anders == member.id:
+                        soundPath = get_sound_with_name("vinslov_moven.wav")
+                    elif user_id_fritjof == member.id:
+                        soundPath = get_sound_with_name("radooradooradooradoo.wav")
+                    elif user_id_kristian == member.id:
+                        soundPath = get_sound_with_name("Har_du_tur_sa_kommer_det_ett_fax.wav")
+                    elif user_id_linus == member.id:
+                        soundPath = get_sound_with_name("jövvla_jag_känner.wav")
+                    elif user_id_max == member.id:
+                        soundPath = get_sound_with_name("campa_i_klaveret_intro.wav")
+                    elif user_id_nils == member.id:
+                        soundPath = get_sound_with_name("A_har_nat_frunntimmer.wav")
+                    elif user_id_philip == member.id:
+                        soundPath = get_sound_with_name("Hasten_sa_va_fan.wav")
+                    elif user_id_rickard == member.id:
+                        soundPath = get_sound_with_name("Nar_hon_var_pa_djurparken.wav")
+                    else:
+                        soundPath = get_random_fars_sound()
 
                     client = self.bot.voice_clients[0]
                     src = discord.PCMVolumeTransformer(discord.FFmpegPCMAudio(soundPath))
