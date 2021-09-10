@@ -25,8 +25,8 @@ user_id_rickard = 184294174206459904;
 def get_sound_with_name(sound_name):
     return glob.glob("{}/*/{}".format(base_dir_sounds, sound_name))[0]
 
-def get_random_fars_sound(sound_dir="", ending=".wav"):
-    valid_dirs = next(os.walk(base_dir_sounds))[1]
+def get_random_fars_sound(sound_dir="", ending=".wav", base_dir="sounds"):
+    valid_dirs = next(os.walk(base_dir))[1]
     if sound_dir in valid_dirs:
         return random.choice(glob.glob("{}/{}/*{}".format(base_dir_sounds, sound_dir, ending)))
     return random.choice(glob.glob("{}/*/*{}".format(base_dir_sounds, ending)))
@@ -51,6 +51,12 @@ class FarsBot(commands.Cog):
     async def farsljud(self, ctx, category=""):
         client = self.bot.voice_clients[0]
         src = discord.PCMVolumeTransformer(discord.FFmpegPCMAudio(get_random_fars_sound(sound_dir=category)))
+        client.play(src, after=lambda e: print('Player error: %s' % e) if e else None)
+
+    @commands.command()
+    async def farsmusik(self, ctx, category=""):
+        client = self.bot.voice_clients[0]
+        src = discord.PCMVolumeTransformer(discord.FFmpegPCMAudio(get_random_fars_sound(sound_dir=category, ending=".mp3", base_dir="musik")))
         client.play(src, after=lambda e: print('Player error: %s' % e) if e else None)
 
     @commands.command()
