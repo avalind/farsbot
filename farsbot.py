@@ -19,8 +19,8 @@ user_id_nils = 486859100026699789;
 user_id_philip = 817454700882296843;
 user_id_rickard = 184294174206459904;
 
-def get_sound_with_name(sound_name):
-    return glob.glob("{}/*/{}".format(base_dir_sounds, sound_name))[0]
+def get_sound_with_name(sound_name, base_dir="sounds"):
+    return glob.glob("{}/*/{}".format(base_dir, sound_name))[0]
 
 def get_random_fars_sound(sound_dir="", ending=".wav", base_dir="sounds"):
     valid_dirs = next(os.walk(base_dir))[1]
