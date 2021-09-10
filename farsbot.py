@@ -10,9 +10,6 @@ from discord.ext import commands
 
 logging.basicConfig(filename="farsbot.log", level=logging.DEBUG)
 
-base_dir_sounds = "sounds"
-base_dir_images = "images"
-
 user_id_anders = 801923008532578354;
 user_id_fritjof = 560877870076133378;
 user_id_kristian = 662052476387721266;
@@ -28,15 +25,15 @@ def get_sound_with_name(sound_name):
 def get_random_fars_sound(sound_dir="", ending=".wav", base_dir="sounds"):
     valid_dirs = next(os.walk(base_dir))[1]
     if sound_dir in valid_dirs:
-        return random.choice(glob.glob("{}/{}/*{}".format(base_dir_sounds, sound_dir, ending)))
-    return random.choice(glob.glob("{}/*/*{}".format(base_dir_sounds, ending)))
+        return random.choice(glob.glob("{}/{}/*{}".format(base_dir, sound_dir, ending)))
+    return random.choice(glob.glob("{}/*/*{}".format(base_dir, ending)))
 
 def get_random_fars_image(img_dir="", ending=".jpg"):
-    base_dir_images = "images"
-    valid_dirs = next(os.walk(base_dir_images))[1]
+    base_dir = "images"
+    valid_dirs = next(os.walk(base_dir))[1]
     if img_dir in valid_dirs:
-        return random.choice(glob.glob("{}/{}/*{}".format(base_dir_images, img_dir, ending)))
-    return random.choice(glob.glob("{}/*/*{}".format(base_dir_images, ending)))
+        return random.choice(glob.glob("{}/{}/*{}".format(base_dir, img_dir, ending)))
+    return random.choice(glob.glob("{}/*/*{}".format(base_dir, ending)))
 
 def load_token(filename="token.json"):
     with open(filename) as handle:
