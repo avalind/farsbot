@@ -5,6 +5,7 @@ import glob
 import json
 import os
 
+import youtube_dl
 import discord
 from discord.ext import commands
 
@@ -18,6 +19,38 @@ user_id_max = 140887080048787456;
 user_id_nils = 486859100026699789;
 user_id_philip = 817454700882296843;
 user_id_rickard = 184294174206459904;
+
+ytdl_cfg = {
+    'format': 'bestaudio/best',
+    'restrictfilenames': True,
+    'noplaylist': True,
+    'nocheckcertificate': True,
+    'ignoreerrors': False,
+    'logtostderr': False,
+    'quite': True,
+    'no_warnings': True,
+    'default_search': 'auto',
+    'source_address': '0.0.0.0'
+}
+
+ytdl = youtube_dl.YoutubeDL(ytdl_cfg)
+
+class YTDLSource(discord.PCMVolumeTransformer):
+    def __init__(self, source, *, data, volume=0.5):
+        super().__init__(source, volume)
+        self.data = data
+        self.title = data.get('title')
+        self.url = ""
+
+    @classmethod
+    async def from_url(cls, url, *, loop=None, stream=False):
+        loop = loop or asyncio.get_event_loop()
+        data = await loop.run_in_executor(None, lambda: ytdl.extract_info(url, download=not stream))
+        if 'entries' in data:
+            data = data['entries'][0]
+        filename = data['title'] if stream else ytdl.prepare_filename(data)
+        return filename
+
 
 def get_sound_with_name(sound_name, base_dir="sounds"):
     return glob.glob("{}/*/{}".format(base_dir, sound_name))[0]
@@ -55,6 +88,24 @@ class FarsBot(commands.Cog):
         client = self.bot.voice_clients[0]
         src = discord.PCMVolumeTransformer(discord.FFmpegPCMAudio(get_random_fars_sound(sound_dir=category, ending=".mp3", base_dir="musik")))
         client.play(src, after=lambda e: print('Player error: %s' % e) if e else None)
+
+    @commands.command()
+    async def birger_play(self, ctx, url):
+        filename = await YTDLSource.from_url(url, loop=self.bot.loop)
+        client = self.bot.voice_clients[0]
+        client.play(discord.FFmpegPCMAudio(source=filename), after=lambda e: print("YT music error: %s" % e if e else None))
+
+    @commands.command()
+    async def birger_pause(self, ctx):
+        client = self.bot.voice_clients[0]
+        if client.is_playing():
+            await client.pause()
+
+    @commands.command()
+    async def birger_resume(self, ctx):
+        client = self.bot.voice_clients[0]
+        if client.is_paused():
+            await client.resume()
 
     @commands.command()
     async def fars(self, ctx, category=""):

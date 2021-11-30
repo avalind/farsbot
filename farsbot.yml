@@ -51,3 +51,4 @@ dependencies:
   - xz=5.2.5=h516909a_1
   - yarl=1.6.3=py39h3811e60_1
   - zlib=1.2.11=h516909a_1010
+  - youtube-dl=2021.6.6
