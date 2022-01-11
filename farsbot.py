@@ -5,7 +5,7 @@ import glob
 import json
 import os
 
-import youtube_dl
+import yt_dlp as youtube_dl
 import discord
 from discord.ext import commands
 
@@ -30,7 +30,8 @@ ytdl_cfg = {
     'quite': True,
     'no_warnings': True,
     'default_search': 'auto',
-    'source_address': '0.0.0.0'
+    'source_address': '0.0.0.0',
+    'outtmpl': 'songcache/%(title)s.%(ext)s',
 }
 
 ytdl = youtube_dl.YoutubeDL(ytdl_cfg)
@@ -99,13 +100,22 @@ class FarsBot(commands.Cog):
     async def birger_pause(self, ctx):
         client = self.bot.voice_clients[0]
         if client.is_playing():
-            await client.pause()
+            client.pause()
 
     @commands.command()
     async def birger_resume(self, ctx):
         client = self.bot.voice_clients[0]
         if client.is_paused():
-            await client.resume()
+            client.resume()
+
+    @commands.command()
+    async def birger(self, ctx):
+        """
+            Shows the api for the music part (birger) of farsbot.
+        """
+        str_to_send = "Jevvl. Du vill veta hur jag funkar.\n{0}"
+        str_to_send = str_to_send.format("```!birger_play [youtube url]\n!birger_pause\n!birger_resume```")
+        await ctx.send(str_to_send)
 
     @commands.command()
     async def fars(self, ctx, category=""):
