@@ -77,6 +77,12 @@ def load_token(filename="token.json"):
 class FarsBot(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
+        self.queue = []
+
+    def check_queue(self, client):
+        if len(self.queue) > 0:
+            fname = self.queue.pop(0)
+            client.play(discord.FFmpegPCMAudio(source=fname), after=lambda e: self.check_queue(client))
 
     @commands.command()
     async def farsljud(self, ctx, category=""):
@@ -91,10 +97,38 @@ class FarsBot(commands.Cog):
         client.play(src, after=lambda e: print('Player error: %s' % e) if e else None)
 
     @commands.command()
-    async def birger_play(self, ctx, url):
-        filename = await YTDLSource.from_url(url, loop=self.bot.loop)
+    async def birger_play(self, ctx, url=""):
+        if len(url) != 0:
+            filename = await YTDLSource.from_url(url, loop=self.bot.loop)
+        else:
+            filename = self.queue.pop(0)
         client = self.bot.voice_clients[0]
-        client.play(discord.FFmpegPCMAudio(source=filename), after=lambda e: print("YT music error: %s" % e if e else None))
+        client.play(discord.FFmpegPCMAudio(source=filename),
+            after=lambda e: self.check_queue(client))
+
+    @commands.command()
+    async def birger_queue(self, ctx, url=""):
+        if len(url) != 0:
+            self.queue.append(await YTDLSource.from_url(url, loop=self.bot.loop))
+        else:
+            str_to_send = "Kön:\n```"
+            for f in self.queue:
+                base, filename = f.split("/")
+                str_to_send += "\t*{0}\n".format(filename)
+            str_to_send += "```"
+            await ctx.send(str_to_send)
+
+    @commands.command()
+    async def birger_skip(self, ctx):
+        client = self.bot.voice_clients[0]
+        if client.is_playing():
+            client.stop()
+            if len(self.queue) > 0:
+                fname = self.queue.pop(0)
+                client.play(discord.FFmpegPCMAudio(source=fname), after=lambda e: self.check_queue(client))
+        else:
+            if len(self.queue) > 0:
+                tmp = self.queue.pop(0)
 
     @commands.command()
     async def birger_pause(self, ctx):
@@ -114,7 +148,14 @@ class FarsBot(commands.Cog):
             Shows the api for the music part (birger) of farsbot.
         """
         str_to_send = "Jevvl. Du vill veta hur jag funkar.\n{0}"
-        str_to_send = str_to_send.format("```!birger_play [youtube url]\n!birger_pause\n!birger_resume```")
+        str_to_send = str_to_send.format("```\
+!birger_play [youtube url] \n\
+!birger_pause \n\
+!birger_resume \n\
+!birger_queue [youtube url] - för att köa. \n\
+!birger_play - utan url för att spela från kön. \n\
+!birger_skip för att skippa \n\
+!birger_queue utan url för att visa kön.```")
         await ctx.send(str_to_send)
 
     @commands.command()
