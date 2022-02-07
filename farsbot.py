@@ -119,6 +119,10 @@ class FarsBot(commands.Cog):
             await ctx.send(str_to_send)
 
     @commands.command()
+    async def birger_clean(self, ctx):
+        self.queue = []
+
+    @commands.command()
     async def birger_skip(self, ctx):
         client = self.bot.voice_clients[0]
         if client.is_playing():
@@ -155,7 +159,8 @@ class FarsBot(commands.Cog):
 !birger_queue [youtube url] - för att köa. \n\
 !birger_play - utan url för att spela från kön. \n\
 !birger_skip för att skippa \n\
-!birger_queue utan url för att visa kön.```")
+!birger_queue utan url för att visa kön. \n\
+!birger_clean för att tömma kön.```")
         await ctx.send(str_to_send)
 
     @commands.command()
