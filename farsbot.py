@@ -125,7 +125,7 @@ class FarsBot(commands.Cog):
     @commands.command()
     async def birger_skip(self, ctx):
         client = self.bot.voice_clients[0]
-        if client.is_playing():
+        if client.is_playing() or client.is_paused():
             client.stop()
             if len(self.queue) > 0:
                 fname = self.queue.pop(0)
