@@ -62,12 +62,12 @@ def get_random_fars_sound(sound_dir="", ending=".wav", base_dir="sounds"):
         return random.choice(glob.glob("{}/{}/*{}".format(base_dir, sound_dir, ending)))
     return random.choice(glob.glob("{}/*/*{}".format(base_dir, ending)))
 
-def get_random_fars_image(img_dir="", ending=".jpg"):
+def get_random_fars_image(img_dir=""):
     base_dir = "images"
     valid_dirs = next(os.walk(base_dir))[1]
     if img_dir in valid_dirs:
-        return random.choice(glob.glob("{}/{}/*{}".format(base_dir, img_dir, ending)))
-    return random.choice(glob.glob("{}/*/*{}".format(base_dir, ending)))
+        return random.choice(glob.glob("{}/{}/*.*".format(base_dir, img_dir)))
+    return random.choice(glob.glob("{}/*/*.*".format(base_dir)))
 
 def load_token(filename="token.json"):
     with open(filename) as handle:
