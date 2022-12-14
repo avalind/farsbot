@@ -56,6 +56,9 @@ class YTDLSource(discord.PCMVolumeTransformer):
 def get_sound_with_name(sound_name, base_dir="sounds"):
     return glob.glob("{}/*/{}".format(base_dir, sound_name))[0]
 
+def get_reaction_image_with_name(image_name, base_dir="reactions"):
+    return glob.glob("{}/*/{}".format(base_dir, image_name))[0]
+
 def get_random_fars_sound(sound_dir="", ending=".wav", base_dir="sounds"):
     valid_dirs = next(os.walk(base_dir))[1]
     if sound_dir in valid_dirs:
@@ -166,6 +169,14 @@ class FarsBot(commands.Cog):
     @commands.command()
     async def fars(self, ctx, category=""):
         await ctx.channel.send(file=discord.File(get_random_fars_image(img_dir=category)))
+
+    @commands.command()
+    async def teamwork(self, ctx, category="");
+        await ctx.channel.send(file=discord.File(get_reaction_image_with_name("highfive.png"))
+
+    @commands.command()
+    async def highfive(self, ctx, category="");
+        await ctx.channel.send(file=discord.File(get_reaction_image_with_name("highfive.png"))
 
     @commands.command()
     async def join(self, ctx, *, channel: discord.VoiceChannel):
