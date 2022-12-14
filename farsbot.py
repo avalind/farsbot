@@ -57,7 +57,7 @@ def get_sound_with_name(sound_name, base_dir="sounds"):
     return glob.glob("{}/*/{}".format(base_dir, sound_name))[0]
 
 def get_reaction_image_with_name(image_name, base_dir="reactions"):
-    return glob.glob("{}/*/{}".format(base_dir, image_name))[0]
+    return glob.glob("{}/{}".format(base_dir, image_name))[0]
 
 def get_random_fars_sound(sound_dir="", ending=".wav", base_dir="sounds"):
     valid_dirs = next(os.walk(base_dir))[1]
