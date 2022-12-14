@@ -172,11 +172,11 @@ class FarsBot(commands.Cog):
 
     @commands.command()
     async def teamwork(self, ctx, category=""):
-        await ctx.channel.send(file=discord.File(get_reaction_image_with_name("highfive.png"))
+        await ctx.channel.send(file=discord.File(get_reaction_image_with_name("highfive.png")))
 
     @commands.command()
     async def highfive(self, ctx, category=""):
-        await ctx.channel.send(file=discord.File(get_reaction_image_with_name("highfive.png"))
+        await ctx.channel.send(file=discord.File(get_reaction_image_with_name("highfive.png")))
 
     @commands.command()
     async def join(self, ctx, *, channel: discord.VoiceChannel):
