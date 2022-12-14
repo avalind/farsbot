@@ -171,11 +171,11 @@ class FarsBot(commands.Cog):
         await ctx.channel.send(file=discord.File(get_random_fars_image(img_dir=category)))
 
     @commands.command()
-    async def teamwork(self, ctx, category="");
+    async def teamwork(self, ctx, category=""):
         await ctx.channel.send(file=discord.File(get_reaction_image_with_name("highfive.png"))
 
     @commands.command()
-    async def highfive(self, ctx, category="");
+    async def highfive(self, ctx, category=""):
         await ctx.channel.send(file=discord.File(get_reaction_image_with_name("highfive.png"))
 
     @commands.command()
