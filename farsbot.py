@@ -100,12 +100,6 @@ class FarsBot(commands.Cog):
         client.play(src, after=lambda e: print('Player error: %s' % e) if e else None)
 
     @commands.command()
-    async def farsljud(self, ctx, category=""):
-        client = self.bot.voice_clients[0]
-        src = discord.PCMVolumeTransformer(discord.FFmpegPCMAudio(get_random_fars_sound(sound_dir=category)))
-        client.play(src, after=lambda e: print('Player error: %s' % e) if e else None)
-
-    @commands.command()
     async def HA(self, ctx, category=""):
         client = self.bot.voice_clients[0]
         src = discord.PCMVolumeTransformer(discord.FFmpegPCMAudio(get_sound_with_name('brunnen.wav')))
