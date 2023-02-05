@@ -6,10 +6,12 @@ import json
 import os
 
 import asyncio
+import nest_asyncio
 import yt_dlp as youtube_dl
 import discord
 from discord.ext import commands
 
+nest_asyncio.apply()
 logging.basicConfig(filename="farsbot.log", level=logging.DEBUG)
 
 user_id_anders = 801923008532578354
@@ -258,7 +260,8 @@ async def main():
         intents=discord.Intents.default()
     )
     t = load_token()
-    await bot.add_cog(FarsBot(bot))
+    bot.add_cog(FarsBot(bot))
     bot.run(t)
 
-asyncio.run(main())
+if __name__ == "__main__":
+    asyncio.run(main())
