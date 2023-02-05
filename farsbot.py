@@ -253,8 +253,7 @@ class FarsBot(commands.Cog):
                         'Player error: %s' % e) if e else None)
 
 
-i = discord.Intents.default()
-i.messages = True
+i = discord.Intents.all()
 
 async def main():
     bot = commands.Bot(
@@ -264,7 +263,7 @@ async def main():
     )
 
     t = load_token()
-    
+
     async with bot:
         await bot.add_cog(FarsBot(bot))
         await bot.run(t)
