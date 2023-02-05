@@ -253,15 +253,21 @@ class FarsBot(commands.Cog):
                         'Player error: %s' % e) if e else None)
 
 
+i = discord.Intents.default()
+i.messages = True
+
 async def main():
     bot = commands.Bot(
         command_prefix=commands.when_mentioned_or("!"),
         description="",
-        intents=discord.Intents.default()
+        intents=i,
     )
+
     t = load_token()
-    bot.add_cog(FarsBot(bot))
-    await bot.run(t)
+    
+    async with bot:
+        await bot.add_cog(FarsBot(bot))
+        await bot.run(t)
 
 if __name__ == "__main__":
     asyncio.run(main())
