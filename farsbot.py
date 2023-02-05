@@ -255,9 +255,6 @@ class FarsBot(commands.Cog):
 
 i = discord.Intents.default()
 i.messages = True
-i.dm_messages = True
-i.guild_messages = True
-i.presences = True
 i.voice_states = True
 
 async def main():
