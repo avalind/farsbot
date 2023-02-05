@@ -261,7 +261,7 @@ async def main():
     )
     t = load_token()
     bot.add_cog(FarsBot(bot))
-    bot.run(t)
+    await bot.run(t)
 
 if __name__ == "__main__":
     asyncio.run(main())
