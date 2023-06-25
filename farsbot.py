@@ -87,6 +87,17 @@ def load_token(filename="token.json"):
         js = json.load(handle)
     return js["token"]
 
+def get_ip(server_name):
+    with open("aws.json") as handle:
+        js = json.load(handle)
+        if server_name not in js["instances"]:
+            return "Hittar ingen server vid namn " + server_name
+        ec2 = boto3.client('ec2',
+                           aws_access_key_id=js["key"],
+                           aws_secret_access_key=js["secret"])
+        instance = ec2.describe_instances(InstanceIds=[js["instances"][server_name]])['Reservations'][0]['Instances'][0]
+        return instance['PublicIpAddress']
+
 def start_server(server_name):
     with open("aws.json") as handle:
         js = json.load(handle)
@@ -229,6 +240,11 @@ class FarsBot(commands.Cog):
     @commands.command()
     async def stop(self, ctx):
         await ctx.voice_client.disconnect()
+
+    @commands.command()
+    async def getip(self, ctx, servername):
+        result = get_ip(servername)
+        await ctx.send(result)
 
     @commands.command()
     async def startserver(self, ctx, servername):
