@@ -106,7 +106,7 @@ def start_server(server_name):
         ec2 = boto3.client('ec2',
                            aws_access_key_id=js["key"],
                            aws_secret_access_key=js["secret"])
-        instances = ec2.start_instances(InstanceIds=[js["instances"][server_name]])
+        instances = ec2.start_instances(InstanceIds=[js["instances"][server_name]])['StartingInstances']
         print(instances)
         instance = instances[0]
         print(instance)
