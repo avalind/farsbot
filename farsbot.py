@@ -96,7 +96,7 @@ def get_ip(server_name):
                            aws_access_key_id=js["key"],
                            aws_secret_access_key=js["secret"])
         instance = ec2.describe_instances(InstanceIds=[js["instances"][server_name]])['Reservations'][0]['Instances'][0]
-        return instance['PublicIpAddress']
+        return instance.get(u'PublicIpAddress')
 
 def start_server(server_name):
     with open("aws.json") as handle:
