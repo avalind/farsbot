@@ -95,8 +95,10 @@ def start_server(server_name):
         ec2 = boto3.client('ec2',
                            aws_access_key_id=js["key"],
                            aws_secret_access_key=js["secret"])
-        ec2.start_instances(InstanceIds=[js["instances"][server_name]])
-        return "Startar " + server_name
+        instances = ec2.start_instances(InstanceIds=[js["instances"][server_name]])
+        instances[0].wait_until_running()
+        instance_ip = instances[0].public_ip_address
+        return "Farsheim startar med IP " + instance_ip
 
 class FarsBot(commands.Cog):
     def __init__(self, bot):
