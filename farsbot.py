@@ -87,17 +87,6 @@ def load_token(filename="token.json"):
         js = json.load(handle)
     return js["token"]
 
-def get_ip(server_name):
-    with open("aws.json") as handle:
-        js = json.load(handle)
-        if server_name not in js["instances"]:
-            return "Hittar ingen server vid namn " + server_name
-        ec2 = boto3.client('ec2',
-                           aws_access_key_id=js["key"],
-                           aws_secret_access_key=js["secret"])
-        instance = ec2.describe_instances(InstanceIds=[js["instances"][server_name]])['Reservations'][0]['Instances'][0]
-        return instance.get(u'PublicIpAddress')
-
 def start_server(server_name):
     with open("aws.json") as handle:
         js = json.load(handle)
@@ -106,15 +95,13 @@ def start_server(server_name):
         ec2 = boto3.client('ec2',
                            aws_access_key_id=js["key"],
                            aws_secret_access_key=js["secret"])
-        instances = ec2.start_instances(InstanceIds=[js["instances"][server_name]])['StartingInstances']
-        print(instances)
-        instance = instances[0]
-        print(instance)
+        instance = ec2.Instance(js["instances"][server_name])
+        if instance.state['Name'] == 'running':
+            return instance.public_ip_address
+        instance.start()
         instance.wait_until_running()
         instance.reload()
-        instance_ip = instance.public_ip_address
-        print(instance_ip)
-        return js["instances"][server_name] + " startar med IP " + instance_ip
+        return server_name + " startar med IP " + instance.public_ip_address
 
 class FarsBot(commands.Cog):
     def __init__(self, bot):
@@ -240,11 +227,6 @@ class FarsBot(commands.Cog):
     @commands.command()
     async def stop(self, ctx):
         await ctx.voice_client.disconnect()
-
-    @commands.command()
-    async def getip(self, ctx, servername):
-        result = get_ip(servername)
-        await ctx.send(result)
 
     @commands.command()
     async def startserver(self, ctx, servername):
