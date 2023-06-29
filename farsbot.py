@@ -92,11 +92,16 @@ def start_server(server_name):
         js = json.load(handle)
         if server_name not in js["instances"]:
             return "Hittar ingen server vid namn " + server_name
-        ec2 = boto3.client('ec2',
+        ec2 = boto3.resource('ec2',
                            aws_access_key_id=js["key"],
                            aws_secret_access_key=js["secret"])
-        ec2.start_instances(InstanceIds=[js["instances"][server_name]])
-        return "Startar " + server_name
+        instance = ec2.Instance(js["instances"][server_name])
+        if instance.state['Name'] == 'running':
+            return server_name + " kör redan med IP " + instance.public_ip_address
+        instance.start()
+        instance.wait_until_running()
+        instance.reload()
+        return server_name + " startar med IP " + instance.public_ip_address
 
 class FarsBot(commands.Cog):
     def __init__(self, bot):
