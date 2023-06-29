@@ -97,7 +97,7 @@ def start_server(server_name):
                            aws_secret_access_key=js["secret"])
         instance = ec2.Instance(js["instances"][server_name])
         if instance.state['Name'] == 'running':
-            return instance.public_ip_address
+            return server_name + " kör redan med IP " + instance.public_ip_address
         instance.start()
         instance.wait_until_running()
         instance.reload()
