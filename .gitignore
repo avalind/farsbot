@@ -1,5 +1,8 @@
 token.json
+aws.json
+cloudflare.json
 .devcontainer/**
 sounds/**
 fars/**
 farsbot.log
+farsbot-venv/**
