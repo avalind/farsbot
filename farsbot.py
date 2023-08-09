@@ -13,6 +13,8 @@ from discord.ext import commands
 
 import boto3
 
+import CloudFlare
+
 nest_asyncio.apply()
 logging.basicConfig(filename="farsbot.log", level=logging.DEBUG)
 
@@ -87,21 +89,37 @@ def load_token(filename="token.json"):
         js = json.load(handle)
     return js["token"]
 
+
 def start_server(server_name):
     with open("aws.json") as handle:
         js = json.load(handle)
         if server_name not in js["instances"]:
             return "Hittar ingen server vid namn " + server_name
         ec2 = boto3.resource('ec2',
-                           aws_access_key_id=js["key"],
-                           aws_secret_access_key=js["secret"])
+                             aws_access_key_id=js["key"],
+                             aws_secret_access_key=js["secret"])
         instance = ec2.Instance(js["instances"][server_name])
         if instance.state['Name'] == 'running':
             return server_name + " kör redan med IP " + instance.public_ip_address
         instance.start()
         instance.wait_until_running()
         instance.reload()
-        return server_name + " startar med IP " + instance.public_ip_address
+        with open("cloudflare.json") as cf_handle:
+            cfjs = json.load(cf_handle)
+            cf = CloudFlare.CloudFlare(token=cfjs['token'])
+            zones = cf.zones.get(params={'name': cfjs['zone'], 'per_page': 1})
+            params = {'name': server_name + "." + cfjs['zone'], 'match': 'all',
+                      'type': "A"}
+            dns_records = cf.zones.dns_records.get(
+                zones[0]['id'], params=params)
+            print(dns_records)
+            dns_record = dns_records[0]
+            dns_record['content'] = instance.public_ip_address
+            dns_record = cf.zones.dns_records.put(
+                zones[0]['id'], dns_record['id'], data=dns_record)
+
+        return server_name + " startar med IP " + instance.public_ip_address + "\n " + server_name + "." + cfjs['zone'] + " uppdaterad."
+
 
 class FarsBot(commands.Cog):
     def __init__(self, bot):
