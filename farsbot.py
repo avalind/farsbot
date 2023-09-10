@@ -100,7 +100,7 @@ def start_server(server_name):
                              aws_secret_access_key=js["secret"])
         instance = ec2.Instance(js["instances"][server_name])
         if instance.state['Name'] == 'running':
-            return server_name + " kör redan med IP " + instance.public_ip_address
+            return server_name + " kör redan på " + instance.public_ip_address
         instance.start()
         instance.wait_until_running()
         instance.reload()
@@ -118,7 +118,7 @@ def start_server(server_name):
             dns_record = cf.zones.dns_records.put(
                 zones[0]['id'], dns_record['id'], data=dns_record)
 
-        return server_name + " startar med IP " + instance.public_ip_address + "\n " + server_name + "." + cfjs['zone'] + " uppdaterad."
+        return server_name + " startar på " + server_name + "." + cfjs['zone'] + " (" + instance.public_ip_address + ")"
 
 
 class FarsBot(commands.Cog):
