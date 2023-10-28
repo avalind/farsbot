@@ -26,6 +26,7 @@ user_id_max = 140887080048787456
 user_id_nils = 486859100026699789
 user_id_philip = 817454700882296843
 user_id_rickard = 184294174206459904
+user_id_beebop = 325631117837336577
 
 ytdl_cfg = {
     'format': 'bestaudio/best',
@@ -283,6 +284,8 @@ class FarsBot(commands.Cog):
                     elif user_id_rickard == member.id:
                         soundPath = get_sound_with_name(
                             "Nar_hon_var_pa_djurparken.wav")
+                    elif user_id_beebop == member.id:
+                        soundPath = get_sound_with_name("snickeriet1.wav")
                     else:
                         soundPath = get_random_fars_sound()
 
