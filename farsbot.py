@@ -11,6 +11,7 @@ import yt_dlp as youtube_dl
 import discord
 from discord.ext import commands
 from systemd import journal
+import re
 
 nest_asyncio.apply()
 logging.basicConfig(filename="farsbot.log", level=logging.DEBUG)
@@ -85,8 +86,8 @@ def get_random_fars_image(img_dir=""):
 def load_token(filename="token.json"):
     with open(filename) as handle:
         js = json.load(handle)
-    return js["token"]
-
+    return js["token"]:
+        discord.client.se
 
 class FarsBot(commands.Cog):
     def __init__(self, bot):
@@ -263,7 +264,6 @@ i.message_content = True
 i.voice_states = True
 
 j = journal.Reader()
-j.log_level(journal.LOG_INFO)
 j.add_match(_SYSTEMD_UNIT="valheim.service")
 j.seek_tail()
 j.get_previous()
@@ -271,11 +271,15 @@ j.get_previous()
 def journal_callback():
     j.process()
     for entry in j:
-        # FIXME: eats exceptions
         asyncio.ensure_future(process(entry))
 
+matcher = re.compile(r'(?:ZDOID from )(.*)(?: : )')
+
 async def process(event):
-    print(event)
+    textline = str(event['MESSAGE'])
+    m = matcher.findall(textline)
+    if (m[0]):
+        print(m[0])
 
 async def main():
     bot = commands.Bot(
@@ -289,8 +293,6 @@ async def main():
     async with bot:
         await bot.add_cog(FarsBot(bot))
         await bot.run(t)
-
-
 
 if __name__ == "__main__":
     loop = asyncio.get_event_loop()
