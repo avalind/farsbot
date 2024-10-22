@@ -39,7 +39,7 @@ ytdl_cfg = {
     'no_warnings': True,
     'default_search': 'auto',
     'source_address': '0.0.0.0',
-    'outtmpl': 'songcache/%(title)s_%(epoch)s.%(ext)s',
+    'outtmpl': 'songcache/%(original_url)s.%(ext)s',
 }
 
 ytdl = youtube_dl.YoutubeDL(ytdl_cfg)
