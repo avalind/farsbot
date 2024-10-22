@@ -86,8 +86,7 @@ def get_random_fars_image(img_dir=""):
 def load_token(filename="token.json"):
     with open(filename) as handle:
         js = json.load(handle)
-    return js["token"]:
-        discord.client.se
+    return js["token"]
 
 class FarsBot(commands.Cog):
     def __init__(self, bot):
@@ -277,9 +276,10 @@ matcher = re.compile(r'(?:ZDOID from )(.*)(?: : )')
 
 async def process(event):
     textline = str(event['MESSAGE'])
+    print(textline)
     m = matcher.findall(textline)
     if (m[0]):
-        print(m[0])
+        print()
 
 async def main():
     bot = commands.Bot(
@@ -293,6 +293,7 @@ async def main():
     async with bot:
         await bot.add_cog(FarsBot(bot))
         await bot.run(t)
+
 
 if __name__ == "__main__":
     loop = asyncio.get_event_loop()
