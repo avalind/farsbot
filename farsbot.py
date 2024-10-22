@@ -278,9 +278,6 @@ async def process(event):
     print(event)
 
 async def main():
-    loop = asyncio.get_event_loop()
-    loop.add_reader(j.fileno(), journal_callback)
-
     bot = commands.Bot(
         command_prefix=commands.when_mentioned_or("!"),
         description="",
@@ -293,8 +290,10 @@ async def main():
         await bot.add_cog(FarsBot(bot))
         await bot.run(t)
 
-    loop.run_forever()
 
 
 if __name__ == "__main__":
-    asyncio.run(main())
+    loop = asyncio.get_event_loop()
+    loop.add_reader(j.fileno(), journal_callback)
+    asyncio.ensure_future(main(), loop=loop)
+    loop.run_forever()
