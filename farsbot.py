@@ -10,6 +10,7 @@ import nest_asyncio
 import yt_dlp as youtube_dl
 import discord
 from discord.ext import commands
+from systemd import journal
 
 nest_asyncio.apply()
 logging.basicConfig(filename="farsbot.log", level=logging.DEBUG)
@@ -261,8 +262,25 @@ i.messages = True
 i.message_content = True
 i.voice_states = True
 
+j = journal.Reader()
+j.log_level(journal.LOG_INFO)
+j.add_match(_SYSTEMD_UNIT="valheim.service")
+j.seek_tail()
+j.get_previous()
+
+def journal_callback():
+    j.process()
+    for entry in j:
+        # FIXME: eats exceptions
+        asyncio.ensure_future(process(entry))
+
+async def process(event):
+    print(event)
 
 async def main():
+    loop = asyncio.get_event_loop()
+    loop.add_reader(j.fileno(), journal_callback)
+
     bot = commands.Bot(
         command_prefix=commands.when_mentioned_or("!"),
         description="",
@@ -274,6 +292,9 @@ async def main():
     async with bot:
         await bot.add_cog(FarsBot(bot))
         await bot.run(t)
+
+    loop.run_forever()
+
 
 if __name__ == "__main__":
     asyncio.run(main())
