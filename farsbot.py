@@ -11,10 +11,6 @@ import yt_dlp as youtube_dl
 import discord
 from discord.ext import commands
 
-import boto3
-
-import CloudFlare
-
 nest_asyncio.apply()
 logging.basicConfig(filename="farsbot.log", level=logging.DEBUG)
 
@@ -89,37 +85,6 @@ def load_token(filename="token.json"):
     with open(filename) as handle:
         js = json.load(handle)
     return js["token"]
-
-
-def start_server(server_name):
-    with open("aws.json") as handle:
-        js = json.load(handle)
-        if server_name not in js["instances"]:
-            return "Hittar ingen server vid namn " + server_name
-        ec2 = boto3.resource('ec2',
-                             aws_access_key_id=js["key"],
-                             aws_secret_access_key=js["secret"])
-        instance = ec2.Instance(js["instances"][server_name])
-        if instance.state['Name'] == 'running':
-            return server_name + " kör redan på " + instance.public_ip_address
-        instance.start()
-        instance.wait_until_running()
-        instance.reload()
-        with open("cloudflare.json") as cf_handle:
-            cfjs = json.load(cf_handle)
-            cf = CloudFlare.CloudFlare(token=cfjs['token'])
-            zones = cf.zones.get(params={'name': cfjs['zone'], 'per_page': 1})
-            params = {'name': server_name + "." + cfjs['zone'], 'match': 'all',
-                      'type': "A"}
-            dns_records = cf.zones.dns_records.get(
-                zones[0]['id'], params=params)
-            print(dns_records)
-            dns_record = dns_records[0]
-            dns_record['content'] = instance.public_ip_address
-            dns_record = cf.zones.dns_records.put(
-                zones[0]['id'], dns_record['id'], data=dns_record)
-
-        return server_name + " startar på " + server_name + "." + cfjs['zone'] + " (" + instance.public_ip_address + ")"
 
 
 class FarsBot(commands.Cog):
@@ -246,11 +211,6 @@ class FarsBot(commands.Cog):
     @commands.command()
     async def stop(self, ctx):
         await ctx.voice_client.disconnect()
-
-    @commands.command()
-    async def startserver(self, ctx, servername):
-        result = start_server(servername)
-        await ctx.send(result)
 
     @commands.Cog.listener()
     async def on_voice_state_update(self, member, before, after):
