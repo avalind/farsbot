@@ -281,7 +281,7 @@ async def process(event):
     m = matcher.findall(textline)
     if (m[0]):
         channel = bot.get_channel(channel_id_general)
-        channel.send("{} anslöt till Farsheim".format(m[0]))
+        await channel.send("{} anslöt till Farsheim".format(m[0]))
 
 bot = commands.Bot(
     command_prefix=commands.when_mentioned_or("!"),
