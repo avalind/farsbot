@@ -10,10 +10,8 @@ import nest_asyncio
 import yt_dlp as youtube_dl
 import discord
 from discord.ext import commands
-
-import boto3
-
-import CloudFlare
+from systemd import journal
+import re
 
 nest_asyncio.apply()
 logging.basicConfig(filename="farsbot.log", level=logging.DEBUG)
@@ -27,6 +25,8 @@ user_id_nils = 486859100026699789
 user_id_philip = 817454700882296843
 user_id_rickard = 184294174206459904
 user_id_beebop = 325631117837336577
+
+channel_id_general = 817453063454851185
 
 ytdl_cfg = {
     'format': 'bestaudio/best',
@@ -89,38 +89,6 @@ def load_token(filename="token.json"):
     with open(filename) as handle:
         js = json.load(handle)
     return js["token"]
-
-
-def start_server(server_name):
-    with open("aws.json") as handle:
-        js = json.load(handle)
-        if server_name not in js["instances"]:
-            return "Hittar ingen server vid namn " + server_name
-        ec2 = boto3.resource('ec2',
-                             aws_access_key_id=js["key"],
-                             aws_secret_access_key=js["secret"])
-        instance = ec2.Instance(js["instances"][server_name])
-        if instance.state['Name'] == 'running':
-            return server_name + " kör redan på " + instance.public_ip_address
-        instance.start()
-        instance.wait_until_running()
-        instance.reload()
-        with open("cloudflare.json") as cf_handle:
-            cfjs = json.load(cf_handle)
-            cf = CloudFlare.CloudFlare(token=cfjs['token'])
-            zones = cf.zones.get(params={'name': cfjs['zone'], 'per_page': 1})
-            params = {'name': server_name + "." + cfjs['zone'], 'match': 'all',
-                      'type': "A"}
-            dns_records = cf.zones.dns_records.get(
-                zones[0]['id'], params=params)
-            print(dns_records)
-            dns_record = dns_records[0]
-            dns_record['content'] = instance.public_ip_address
-            dns_record = cf.zones.dns_records.put(
-                zones[0]['id'], dns_record['id'], data=dns_record)
-
-        return server_name + " startar på " + server_name + "." + cfjs['zone'] + " (" + instance.public_ip_address + ")"
-
 
 class FarsBot(commands.Cog):
     def __init__(self, bot):
@@ -247,11 +215,6 @@ class FarsBot(commands.Cog):
     async def stop(self, ctx):
         await ctx.voice_client.disconnect()
 
-    @commands.command()
-    async def startserver(self, ctx, servername):
-        result = start_server(servername)
-        await ctx.send(result)
-
     @commands.Cog.listener()
     async def on_voice_state_update(self, member, before, after):
         if after.channel == None:
@@ -301,19 +264,41 @@ i.messages = True
 i.message_content = True
 i.voice_states = True
 
+j = journal.Reader()
+j.add_match(_SYSTEMD_UNIT="valheim.service")
+j.seek_tail()
+j.get_previous()
+
+def journal_callback():
+    j.process()
+    for entry in j:
+        asyncio.ensure_future(process(entry))
+
+matcher = re.compile(r'(?:ZDOID from )(.*)(?: : )')
+
+async def process(event):
+    textline = str(event['MESSAGE'])
+    m = matcher.findall(textline)
+    if (m[0]):
+        channel = bot.get_channel(channel_id_general)
+        await channel.send("{} anslöt till Farsheim".format(m[0]))
+
+bot = commands.Bot(
+    command_prefix=commands.when_mentioned_or("!"),
+    description="",
+    intents=i,
+)
 
 async def main():
-    bot = commands.Bot(
-        command_prefix=commands.when_mentioned_or("!"),
-        description="",
-        intents=i,
-    )
-
     t = load_token()
 
     async with bot:
         await bot.add_cog(FarsBot(bot))
         await bot.run(t)
 
+
 if __name__ == "__main__":
-    asyncio.run(main())
+    loop = asyncio.get_event_loop()
+    loop.add_reader(j.fileno(), journal_callback)
+    asyncio.ensure_future(main(), loop=loop)
+    loop.run_forever()
