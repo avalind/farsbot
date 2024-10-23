@@ -26,6 +26,8 @@ user_id_philip = 817454700882296843
 user_id_rickard = 184294174206459904
 user_id_beebop = 325631117837336577
 
+channel_id_general = 817453063454851185
+
 ytdl_cfg = {
     'format': 'bestaudio/best',
     'restrictfilenames': True,
@@ -276,18 +278,18 @@ matcher = re.compile(r'(?:ZDOID from )(.*)(?: : )')
 
 async def process(event):
     textline = str(event['MESSAGE'])
-    print(textline)
     m = matcher.findall(textline)
     if (m[0]):
-        print()
+        channel = bot.get_channel(channel_id_general)
+        channel.send("{} anslöt till Farsheim".format(m[0]))
+
+bot = commands.Bot(
+    command_prefix=commands.when_mentioned_or("!"),
+    description="",
+    intents=i,
+)
 
 async def main():
-    bot = commands.Bot(
-        command_prefix=commands.when_mentioned_or("!"),
-        description="",
-        intents=i,
-    )
-
     t = load_token()
 
     async with bot:
