@@ -274,9 +274,8 @@ def journal_callback():
     for entry in j:
         asyncio.ensure_future(process(entry))
 
-join_matcher = re.compile('(?:ZDOID from )(.*)(?: : )(?:.*:1\\b)')
-print(join_matcher)
-death_matcher = re.compile('(?:ZDOID from )(.*)(?: : )(?:.*0:0)')
+join_matcher = re.compile(r'(?:ZDOID from )(.*)(?: : )(?:.*:1\b)')
+death_matcher = re.compile(r'(?:ZDOID from )(.*)(?: : )(?:.*0:0)')
 
 async def process(event):
     textline = str(event['MESSAGE'])
