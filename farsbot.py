@@ -29,17 +29,17 @@ user_id_beebop = 325631117837336577
 channel_id_general = 817453063454851185
 
 ytdl_cfg = {
-    'format': 'bestaudio/best',
-    'restrictfilenames': True,
-    'noplaylist': True,
-    'nocheckcertificate': True,
-    'ignoreerrors': False,
-    'logtostderr': False,
-    'quite': True,
-    'no_warnings': True,
-    'default_search': 'auto',
-    'source_address': '0.0.0.0',
-    'outtmpl': 'songcache/%(original_url)s.%(ext)s',
+    "format": "bestaudio/best",
+    "restrictfilenames": True,
+    "noplaylist": True,
+    "nocheckcertificate": True,
+    "ignoreerrors": False,
+    "logtostderr": False,
+    "quite": True,
+    "no_warnings": True,
+    "default_search": "auto",
+    "source_address": "0.0.0.0",
+    "outtmpl": "songcache/%(original_url)s.%(ext)s",
 }
 
 ytdl = youtube_dl.YoutubeDL(ytdl_cfg)
@@ -49,16 +49,18 @@ class YTDLSource(discord.PCMVolumeTransformer):
     def __init__(self, source, *, data, volume=0.5):
         super().__init__(source, volume)
         self.data = data
-        self.title = data.get('title')
+        self.title = data.get("title")
         self.url = ""
 
     @classmethod
     async def from_url(cls, url, *, loop=None, stream=False):
         loop = loop or asyncio.get_event_loop()
-        data = await loop.run_in_executor(None, lambda: ytdl.extract_info(url, download=not stream))
-        if 'entries' in data:
-            data = data['entries'][0]
-        filename = data['title'] if stream else ytdl.prepare_filename(data)
+        data = await loop.run_in_executor(
+            None, lambda: ytdl.extract_info(url, download=not stream)
+        )
+        if "entries" in data:
+            data = data["entries"][0]
+        filename = data["title"] if stream else ytdl.prepare_filename(data)
         return filename
 
 
@@ -90,6 +92,7 @@ def load_token(filename="token.json"):
         js = json.load(handle)
     return js["token"]
 
+
 class FarsBot(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
@@ -98,32 +101,38 @@ class FarsBot(commands.Cog):
     def check_queue(self, client):
         if len(self.queue) > 0:
             fname = self.queue.pop(0)
-            client.play(discord.FFmpegPCMAudio(source=fname),
-                        after=lambda e: self.check_queue(client))
+            client.play(
+                discord.FFmpegPCMAudio(source=fname),
+                after=lambda e: self.check_queue(client),
+            )
 
     @commands.command()
     async def farsljud(self, ctx, category=""):
         client = self.bot.voice_clients[0]
-        src = discord.PCMVolumeTransformer(discord.FFmpegPCMAudio(
-            get_random_fars_sound(sound_dir=category)))
-        client.play(src, after=lambda e: print(
-            'Player error: %s' % e) if e else None)
+        src = discord.PCMVolumeTransformer(
+            discord.FFmpegPCMAudio(get_random_fars_sound(sound_dir=category))
+        )
+        client.play(src, after=lambda e: print("Player error: %s" % e) if e else None)
 
     @commands.command()
     async def farsmusik(self, ctx, category=""):
         client = self.bot.voice_clients[0]
-        src = discord.PCMVolumeTransformer(discord.FFmpegPCMAudio(
-            get_random_fars_sound(sound_dir=category, ending=".mp3", base_dir="musik")))
-        client.play(src, after=lambda e: print(
-            'Player error: %s' % e) if e else None)
+        src = discord.PCMVolumeTransformer(
+            discord.FFmpegPCMAudio(
+                get_random_fars_sound(
+                    sound_dir=category, ending=".mp3", base_dir="musik"
+                )
+            )
+        )
+        client.play(src, after=lambda e: print("Player error: %s" % e) if e else None)
 
     @commands.command()
     async def HA(self, ctx, category=""):
         client = self.bot.voice_clients[0]
         src = discord.PCMVolumeTransformer(
-            discord.FFmpegPCMAudio(get_sound_with_name('brunnen.mp3')))
-        client.play(src, after=lambda e: print(
-            'Player error: %s' % e) if e else None)
+            discord.FFmpegPCMAudio(get_sound_with_name("brunnen.mp3"))
+        )
+        client.play(src, after=lambda e: print("Player error: %s" % e) if e else None)
 
     @commands.command()
     async def birger_play(self, ctx, url=""):
@@ -132,8 +141,10 @@ class FarsBot(commands.Cog):
         else:
             filename = self.queue.pop(0)
         client = self.bot.voice_clients[0]
-        client.play(discord.FFmpegPCMAudio(source=filename),
-                    after=lambda e: self.check_queue(client))
+        client.play(
+            discord.FFmpegPCMAudio(source=filename),
+            after=lambda e: self.check_queue(client),
+        )
 
     @commands.command()
     async def birger_queue(self, ctx, url=""):
@@ -158,8 +169,10 @@ class FarsBot(commands.Cog):
             client.stop()
             if len(self.queue) > 0:
                 fname = self.queue.pop(0)
-                client.play(discord.FFmpegPCMAudio(source=fname),
-                            after=lambda e: self.check_queue(client))
+                client.play(
+                    discord.FFmpegPCMAudio(source=fname),
+                    after=lambda e: self.check_queue(client),
+                )
         else:
             if len(self.queue) > 0:
                 tmp = self.queue.pop(0)
@@ -179,10 +192,11 @@ class FarsBot(commands.Cog):
     @commands.command()
     async def birger(self, ctx):
         """
-            Shows the api for the music part (birger) of farsbot.
+        Shows the api for the music part (birger) of farsbot.
         """
         str_to_send = "Jevvl. Du vill veta hur jag funkar.\n{0}"
-        str_to_send = str_to_send.format("```\
+        str_to_send = str_to_send.format(
+            "```\
 !birger_play [youtube url] \n\
 !birger_pause \n\
 !birger_resume \n\
@@ -190,20 +204,27 @@ class FarsBot(commands.Cog):
 !birger_play - utan url för att spela från kön. \n\
 !birger_skip för att skippa \n\
 !birger_queue utan url för att visa kön. \n\
-!birger_clean för att tömma kön.```")
+!birger_clean för att tömma kön.```"
+        )
         await ctx.send(str_to_send)
 
     @commands.command()
     async def fars(self, ctx, category=""):
-        await ctx.channel.send(file=discord.File(get_random_fars_image(img_dir=category)))
+        await ctx.channel.send(
+            file=discord.File(get_random_fars_image(img_dir=category))
+        )
 
     @commands.command()
     async def teamwork(self, ctx, category=""):
-        await ctx.channel.send(file=discord.File(get_reaction_image_with_name("highfive.png")))
+        await ctx.channel.send(
+            file=discord.File(get_reaction_image_with_name("highfive.png"))
+        )
 
     @commands.command()
     async def highfive(self, ctx, category=""):
-        await ctx.channel.send(file=discord.File(get_reaction_image_with_name("highfive.png")))
+        await ctx.channel.send(
+            file=discord.File(get_reaction_image_with_name("highfive.png"))
+        )
 
     @commands.command()
     async def join(self, ctx, *, channel: discord.VoiceChannel):
@@ -228,25 +249,21 @@ class FarsBot(commands.Cog):
                     if user_id_anders == member.id:
                         soundPath = get_sound_with_name("vinslov_moven.wav")
                     elif user_id_fritjof == member.id:
-                        soundPath = get_sound_with_name(
-                            "radooradooradooradoo.wav")
+                        soundPath = get_sound_with_name("radooradooradooradoo.wav")
                     elif user_id_kristian == member.id:
                         soundPath = get_sound_with_name(
-                            "Har_du_tur_sa_kommer_det_ett_fax.wav")
+                            "Har_du_tur_sa_kommer_det_ett_fax.wav"
+                        )
                     elif user_id_linus == member.id:
-                        soundPath = get_sound_with_name(
-                            "jövvla_jag_känner.wav")
+                        soundPath = get_sound_with_name("jövvla_jag_känner.wav")
                     elif user_id_max == member.id:
-                        soundPath = get_sound_with_name(
-                            "campa_i_klaveret_intro.wav")
+                        soundPath = get_sound_with_name("campa_i_klaveret_intro.wav")
                     elif user_id_nils == member.id:
-                        soundPath = get_sound_with_name(
-                            "A_har_nat_frunntimmer.wav")
+                        soundPath = get_sound_with_name("A_har_nat_frunntimmer.wav")
                     elif user_id_philip == member.id:
                         soundPath = get_sound_with_name("Hasten_sa_va_fan.wav")
                     elif user_id_rickard == member.id:
-                        soundPath = get_sound_with_name(
-                            "Nar_hon_var_pa_djurparken.wav")
+                        soundPath = get_sound_with_name("Nar_hon_var_pa_djurparken.wav")
                     elif user_id_beebop == member.id:
                         soundPath = get_sound_with_name("snickeriet1.wav")
                     else:
@@ -254,9 +271,12 @@ class FarsBot(commands.Cog):
 
                     client = self.bot.voice_clients[0]
                     src = discord.PCMVolumeTransformer(
-                        discord.FFmpegPCMAudio(soundPath))
-                    client.play(src, after=lambda e: print(
-                        'Player error: %s' % e) if e else None)
+                        discord.FFmpegPCMAudio(soundPath)
+                    )
+                    client.play(
+                        src,
+                        after=lambda e: print("Player error: %s" % e) if e else None,
+                    )
 
 
 i = discord.Intents.default()
@@ -269,33 +289,37 @@ j.add_match(_SYSTEMD_UNIT="valheim.service")
 j.seek_tail()
 j.get_previous()
 
+
 def journal_callback():
     j.process()
     for entry in j:
         asyncio.ensure_future(process(entry))
 
-join_matcher = re.compile(r'(?:ZDOID from )(.*)(?: : )(?:.*:[123456789]\b)')
-death_matcher = re.compile(r'(?:ZDOID from )(.*)(?: : )(?:.*:0\b)')
+
+join_matcher = re.compile(r"(?:ZDOID from )(.*)(?: : )(?:.*:[123456789]\b)")
+death_matcher = re.compile(r"(?:ZDOID from )(.*)(?: : )(?:.*:0\b)")
+
 
 async def process(event):
-    textline = str(event['MESSAGE'])
+    textline = str(event["MESSAGE"])
     join_match = join_matcher.findall(textline)
     death_match = death_matcher.findall(textline)
-    print(join_match, death_match)
-    if (join_match[0]):
+    if len(join_match) > 0:
         print("join_match", join_match)
         channel = bot.get_channel(channel_id_general)
         await channel.send("{} anslöt till Farsheim".format(join_match[0]))
-    if (death_match[0]):
+    if len(death_match) > 0:
         print("death_match", death_match)
         channel = bot.get_channel(channel_id_general)
-        await channel.send("{} dog en farsartad död".format(death_match[0])) 
+        await channel.send("{} dog en farsartad död".format(death_match[0]))
+
 
 bot = commands.Bot(
     command_prefix=commands.when_mentioned_or("!"),
     description="",
     intents=i,
 )
+
 
 async def main():
     t = load_token()
