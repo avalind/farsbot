@@ -283,10 +283,10 @@ async def process(event):
     death_match = death_matcher.findall(textline)
     if (join_match[0]):
         channel = bot.get_channel(channel_id_general)
-        await channel.send("{} anslöt till Farsheim".format(join_match))
+        await channel.send("{} anslöt till Farsheim".format(join_match[0]))
     if (death_match[0]):
         channel = bot.get_channel(channel_id_general)
-        await channel.send("{} dog en farsartad död".format(death_match)) 
+        await channel.send("{} dog en farsartad död".format(death_match[0])) 
 
 bot = commands.Bot(
     command_prefix=commands.when_mentioned_or("!"),
