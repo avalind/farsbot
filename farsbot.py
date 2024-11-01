@@ -274,14 +274,19 @@ def journal_callback():
     for entry in j:
         asyncio.ensure_future(process(entry))
 
-matcher = re.compile(r'(?:ZDOID from )(.*)(?: : )')
+join_matcher = re.compile(r'(?:ZDOID from )(.*)(?: : )(?:.*:1)')
+death_matcher = re.compile(r'(?:ZDOID from )(.*)(?: : )(?:.*:0)')
 
 async def process(event):
     textline = str(event['MESSAGE'])
-    m = matcher.findall(textline)
-    if (m[0]):
+    join_match = join_matcher.findall(textline)[0]
+    death_match = death_matcher.findall(textline)[0]
+    if (join_match):
         channel = bot.get_channel(channel_id_general)
-        await channel.send("{} anslöt till Farsheim".format(m[0]))
+        await channel.send("{} anslöt till Farsheim".format(join_match))
+    if (death_match):
+        channel = bot.get_channel(channel_id_general)
+        await channel.send("{} dog en farsartad död".format(death_match)) 
 
 bot = commands.Bot(
     command_prefix=commands.when_mentioned_or("!"),
