@@ -286,6 +286,7 @@ i.voice_states = True
 
 j = journal.Reader()
 j.add_match(_SYSTEMD_UNIT="valheim.service")
+j.add_match(_SYSTEMD_UNIT="vrising.service")
 j.seek_tail()
 j.get_previous()
 
@@ -299,19 +300,22 @@ def journal_callback():
 join_matcher = re.compile(r"(?:ZDOID from )(.*)(?: : )(?:.*:[123456789]\b)")
 death_matcher = re.compile(r"(?:ZDOID from )(.*)(?: : )(?:.*:0\b)")
 
+vrising_matcher = re.compile(r"(?:approvedUserIndex.*Character: ')(.*)(?:' connected as ID)")
 
 async def process(event):
     textline = str(event["MESSAGE"])
     join_match = join_matcher.findall(textline)
     death_match = death_matcher.findall(textline)
+    vrising_match = vrising_matcher.findall(textline)
     if len(join_match) > 0:
-        print("join_match", join_match)
         channel = bot.get_channel(channel_id_general)
         await channel.send("{} anslöt till Farsheim".format(join_match[0]))
     if len(death_match) > 0:
-        print("death_match", death_match)
         channel = bot.get_channel(channel_id_general)
         await channel.send("{} dog en farsartad död".format(death_match[0]))
+    if len(vrising_match) > 0:
+        channel = bot.get_channel(channel_id_general)
+        await channel.send("{} anslöt till Fars Rising".format(vrising_match[0]))
 
 
 bot = commands.Bot(
