@@ -318,7 +318,10 @@ async def process(event):
         await channel.send("{} dog en farsartad död".format(death_match[0]))
     if len(vrising_match) > 0:
         channel = bot.get_channel(channel_id_general)
-        await channel.send("{} anslöt till Fars Rising".format(vrising_match[0]))
+        if len(vrising_match[0]) > 0:
+            await channel.send("{} anslöt till Fars Rising".format(vrising_match[0]))
+        else:
+            await channel.send("En farsartat namnlös vampyr anslöt till Fars Rising".format(vrising_match[0]))
 
 
 bot = commands.Bot(
