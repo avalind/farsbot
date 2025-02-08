@@ -290,6 +290,7 @@ i.voice_states = True
 j = journal.Reader()
 j.add_match(_SYSTEMD_UNIT="valheim.service")
 j.add_match(_SYSTEMD_UNIT="vrising.service")
+j.add_match(_SYSTEMD_UNIT="rust.service")
 j.seek_tail()
 j.get_previous()
 
@@ -304,12 +305,14 @@ join_matcher = re.compile(r"(?:ZDOID from )(.*)(?: : )(?:.*:[123456789]\b)")
 death_matcher = re.compile(r"(?:ZDOID from )(.*)(?: : )(?:.*:0\b)")
 
 vrising_matcher = re.compile(r"(?:approvedUserIndex.*Character: ')(.*)(?:' connected as ID)")
+rust_matcher = re.compile(r"(?:\[Authentication\])(.*)(?: authenticated successfully)")
 
 async def process(event):
     textline = str(event["MESSAGE"])
     join_match = join_matcher.findall(textline)
     death_match = death_matcher.findall(textline)
     vrising_match = vrising_matcher.findall(textline)
+    rust_match = rust_matcher.findall(textline)
     if len(join_match) > 0:
         channel = bot.get_channel(channel_id_general)
         await channel.send("{} anslöt till Farsheim".format(join_match[0]))
@@ -322,6 +325,9 @@ async def process(event):
             await channel.send("{} anslöt till Fars Rising".format(vrising_match[0]))
         else:
             await channel.send("En farsartat namnlös vampyr anslöt till Fars Rising".format(vrising_match[0]))
+    if len(rust_match) > 0:
+        channel = bot.get_channel(channel_id_general)
+        await channel.send("{} anslöt till Farsrost".format(rust_match[0]))
 
 
 bot = commands.Bot(
