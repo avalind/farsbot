@@ -28,6 +28,7 @@ user_id_beebop = 325631117837336577
 user_id_niklas = 249863311838019585
 
 channel_id_general = 817453063454851185
+monitored_voice_channel_id = 817453063454851189 
 
 ytdl_cfg = {
     "format": "bestaudio/best",
@@ -107,36 +108,45 @@ class FarsBot(commands.Cog):
                 after=lambda e: self.check_queue(client),
             )
 
+    def count_non_bot_members(self, channel):
+        """Count non-bot members in a voice channel"""
+        return sum(1 for member in channel.members if not member.bot)
+
     @commands.command()
     async def farsljud(self, ctx, category=""):
-        client = self.bot.voice_clients[0]
-        src = discord.PCMVolumeTransformer(
-            discord.FFmpegPCMAudio(get_random_fars_sound(sound_dir=category))
-        )
-        client.play(src, after=lambda e: print("Player error: %s" % e) if e else None)
+        if self.bot.voice_clients:
+            client = self.bot.voice_clients[0]
+            src = discord.PCMVolumeTransformer(
+                discord.FFmpegPCMAudio(get_random_fars_sound(sound_dir=category))
+            )
+            client.play(src, after=lambda e: print("Player error: %s" % e) if e else None)
 
     @commands.command()
     async def farsmusik(self, ctx, category=""):
-        client = self.bot.voice_clients[0]
-        src = discord.PCMVolumeTransformer(
-            discord.FFmpegPCMAudio(
-                get_random_fars_sound(
-                    sound_dir=category, ending=".mp3", base_dir="musik"
+        if self.bot.voice_clients:
+            client = self.bot.voice_clients[0]
+            src = discord.PCMVolumeTransformer(
+                discord.FFmpegPCMAudio(
+                    get_random_fars_sound(
+                        sound_dir=category, ending=".mp3", base_dir="musik"
+                    )
                 )
             )
-        )
-        client.play(src, after=lambda e: print("Player error: %s" % e) if e else None)
+            client.play(src, after=lambda e: print("Player error: %s" % e) if e else None)
 
     @commands.command()
     async def HA(self, ctx, category=""):
-        client = self.bot.voice_clients[0]
-        src = discord.PCMVolumeTransformer(
-            discord.FFmpegPCMAudio(get_sound_with_name("brunnen.mp3"))
-        )
-        client.play(src, after=lambda e: print("Player error: %s" % e) if e else None)
+        if self.bot.voice_clients:
+            client = self.bot.voice_clients[0]
+            src = discord.PCMVolumeTransformer(
+                discord.FFmpegPCMAudio(get_sound_with_name("brunnen.mp3"))
+            )
+            client.play(src, after=lambda e: print("Player error: %s" % e) if e else None)
 
     @commands.command()
     async def birger_play(self, ctx, url=""):
+        if not self.bot.voice_clients:
+            return
         if len(url) != 0:
             filename = await YTDLSource.from_url(url, loop=self.bot.loop)
         else:
@@ -165,6 +175,8 @@ class FarsBot(commands.Cog):
 
     @commands.command()
     async def birger_skip(self, ctx):
+        if not self.bot.voice_clients:
+            return
         client = self.bot.voice_clients[0]
         if client.is_playing() or client.is_paused():
             client.stop()
@@ -180,15 +192,17 @@ class FarsBot(commands.Cog):
 
     @commands.command()
     async def birger_pause(self, ctx):
-        client = self.bot.voice_clients[0]
-        if client.is_playing():
-            client.pause()
+        if self.bot.voice_clients:
+            client = self.bot.voice_clients[0]
+            if client.is_playing():
+                client.pause()
 
     @commands.command()
     async def birger_resume(self, ctx):
-        client = self.bot.voice_clients[0]
-        if client.is_paused():
-            client.resume()
+        if self.bot.voice_clients:
+            client = self.bot.voice_clients[0]
+            if client.is_paused():
+                client.resume()
 
     @commands.command()
     async def birger(self, ctx):
@@ -228,24 +242,39 @@ class FarsBot(commands.Cog):
         )
 
     @commands.command()
-    async def join(self, ctx, *, channel: discord.VoiceChannel):
-        if ctx.voice_client is not None:
-            return await ctx.voice_client.move_to(channel)
-        await channel.connect()
-
-    @commands.command()
     async def stop(self, ctx):
-        await ctx.voice_client.disconnect()
+        if ctx.voice_client:
+            await ctx.voice_client.disconnect()
 
     @commands.Cog.listener()
     async def on_voice_state_update(self, member, before, after):
-        if after.channel == None:
-            pass
-        else:
-            if before.channel == None or before.channel.id != after.channel.id:
-                if member.bot:
-                    pass
-                else:
+        # Ignore bot's own voice state changes
+        if member.bot:
+            return
+
+        # Only monitor the specified voice channel
+        if monitored_voice_channel_id is None:
+            return
+
+        # User joined a voice channel
+        if after.channel and (not before.channel or before.channel.id != after.channel.id):
+            # Only respond if user joined the monitored channel
+            if after.channel.id != monitored_voice_channel_id:
+                return
+            # Check if bot is not in this voice channel
+            bot_in_channel = any(
+                vc.channel.id == after.channel.id for vc in self.bot.voice_clients
+            )
+            
+            if not bot_in_channel:
+                # Bot should join the channel
+                try:
+                    voice_client = await after.channel.connect()
+                    
+                    # Wait a moment for connection to stabilize
+                    await asyncio.sleep(0.5)
+                    
+                    # Determine which sound to play
                     soundPath = ""
                     if user_id_anders == member.id:
                         soundPath = get_sound_with_name("vinslov_moven.wav")
@@ -272,14 +301,70 @@ class FarsBot(commands.Cog):
                     else:
                         soundPath = get_random_fars_sound()
 
-                    client = self.bot.voice_clients[0]
+                    # Play the greeting sound
                     src = discord.PCMVolumeTransformer(
                         discord.FFmpegPCMAudio(soundPath)
                     )
-                    client.play(
+                    voice_client.play(
                         src,
                         after=lambda e: print("Player error: %s" % e) if e else None,
                     )
+                except Exception as e:
+                    print(f"Error joining channel: {e}")
+            else:
+                # Bot is already in the channel, just play the sound
+                for vc in self.bot.voice_clients:
+                    if vc.channel.id == after.channel.id:
+                        soundPath = ""
+                        if user_id_anders == member.id:
+                            soundPath = get_sound_with_name("vinslov_moven.wav")
+                        elif user_id_fritjof == member.id:
+                            soundPath = get_sound_with_name("radooradooradooradoo.wav")
+                        elif user_id_kristian == member.id:
+                            soundPath = get_sound_with_name(
+                                "Har_du_tur_sa_kommer_det_ett_fax.wav"
+                            )
+                        elif user_id_linus == member.id:
+                            soundPath = get_sound_with_name("jövvla_jag_känner.wav")
+                        elif user_id_max == member.id:
+                            soundPath = get_sound_with_name("campa_i_klaveret_intro.wav")
+                        elif user_id_nils == member.id:
+                            soundPath = get_sound_with_name("A_har_nat_frunntimmer.wav")
+                        elif user_id_philip == member.id:
+                            soundPath = get_sound_with_name("Hasten_sa_va_fan.wav")
+                        elif user_id_rickard == member.id:
+                            soundPath = get_sound_with_name("Nar_hon_var_pa_djurparken.wav")
+                        elif user_id_beebop == member.id:
+                            soundPath = get_sound_with_name("snickeriet1.wav")
+                        elif user_id_niklas == member.id:
+                            soundPath = get_sound_with_name("flöjtfars.wav")
+                        else:
+                            soundPath = get_random_fars_sound()
+
+                        src = discord.PCMVolumeTransformer(
+                            discord.FFmpegPCMAudio(soundPath)
+                        )
+                        vc.play(
+                            src,
+                            after=lambda e: print("Player error: %s" % e) if e else None,
+                        )
+                        break
+
+        # User left a voice channel
+        if before.channel and (not after.channel or before.channel.id != after.channel.id):
+            # Only respond if user left the monitored channel
+            if before.channel.id != monitored_voice_channel_id:
+                return
+            # Check if bot is in the channel the user left
+            for vc in self.bot.voice_clients:
+                if vc.channel.id == before.channel.id:
+                    # Count remaining non-bot members
+                    non_bot_count = self.count_non_bot_members(before.channel)
+                    
+                    # If no other users remain, disconnect
+                    if non_bot_count == 0:
+                        await vc.disconnect()
+                    break
 
 
 i = discord.Intents.default()
