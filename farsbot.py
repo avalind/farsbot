@@ -108,9 +108,30 @@ class FarsBot(commands.Cog):
                 after=lambda e: self.check_queue(client),
             )
 
-    def count_non_bot_members(self, channel):
-        """Count non-bot members in a voice channel"""
-        return sum(1 for member in channel.members if not member.bot)
+    def get_user_sound(self, user_id):
+        """Get the appropriate sound file for a user"""
+        if user_id == user_id_anders:
+            return get_sound_with_name("vinslov_moven.wav")
+        elif user_id == user_id_fritjof:
+            return get_sound_with_name("radooradooradooradoo.wav")
+        elif user_id == user_id_kristian:
+            return get_sound_with_name("Har_du_tur_sa_kommer_det_ett_fax.wav")
+        elif user_id == user_id_linus:
+            return get_sound_with_name("jövvla_jag_känner.wav")
+        elif user_id == user_id_max:
+            return get_sound_with_name("campa_i_klaveret_intro.wav")
+        elif user_id == user_id_nils:
+            return get_sound_with_name("A_har_nat_frunntimmer.wav")
+        elif user_id == user_id_philip:
+            return get_sound_with_name("Hasten_sa_va_fan.wav")
+        elif user_id == user_id_rickard:
+            return get_sound_with_name("Nar_hon_var_pa_djurparken.wav")
+        elif user_id == user_id_beebop:
+            return get_sound_with_name("snickeriet1.wav")
+        elif user_id == user_id_niklas:
+            return get_sound_with_name("flöjtfars.wav")
+        else:
+            return get_random_fars_sound()
 
     @commands.command()
     async def farsljud(self, ctx, category=""):
@@ -256,115 +277,65 @@ class FarsBot(commands.Cog):
         if monitored_voice_channel_id is None:
             return
 
-        # User joined a voice channel
-        if after.channel and (not before.channel or before.channel.id != after.channel.id):
-            # Only respond if user joined the monitored channel
-            if after.channel.id != monitored_voice_channel_id:
-                return
-            # Check if bot is not in this voice channel
-            bot_in_channel = any(
-                vc.channel.id == after.channel.id for vc in self.bot.voice_clients
-            )
-            
-            if not bot_in_channel:
-                # Bot should join the channel
-                try:
-                    voice_client = await after.channel.connect()
-                    
-                    # Wait a moment for connection to stabilize
-                    await asyncio.sleep(0.5)
-                    
-                    # Determine which sound to play
-                    soundPath = ""
-                    if user_id_anders == member.id:
-                        soundPath = get_sound_with_name("vinslov_moven.wav")
-                    elif user_id_fritjof == member.id:
-                        soundPath = get_sound_with_name("radooradooradooradoo.wav")
-                    elif user_id_kristian == member.id:
-                        soundPath = get_sound_with_name(
-                            "Har_du_tur_sa_kommer_det_ett_fax.wav"
-                        )
-                    elif user_id_linus == member.id:
-                        soundPath = get_sound_with_name("jövvla_jag_känner.wav")
-                    elif user_id_max == member.id:
-                        soundPath = get_sound_with_name("campa_i_klaveret_intro.wav")
-                    elif user_id_nils == member.id:
-                        soundPath = get_sound_with_name("A_har_nat_frunntimmer.wav")
-                    elif user_id_philip == member.id:
-                        soundPath = get_sound_with_name("Hasten_sa_va_fan.wav")
-                    elif user_id_rickard == member.id:
-                        soundPath = get_sound_with_name("Nar_hon_var_pa_djurparken.wav")
-                    elif user_id_beebop == member.id:
-                        soundPath = get_sound_with_name("snickeriet1.wav")
-                    elif user_id_niklas == member.id:
-                        soundPath = get_sound_with_name("flöjtfars.wav")
-                    else:
-                        soundPath = get_random_fars_sound()
+        # User joined the monitored voice channel
+        if after.channel and after.channel.id == monitored_voice_channel_id:
+            # Only act if they weren't already in this channel
+            if not before.channel or before.channel.id != monitored_voice_channel_id:
+                # Check if bot is not in this voice channel
+                bot_in_channel = any(
+                    vc.channel.id == monitored_voice_channel_id for vc in self.bot.voice_clients
+                )
+                
+                if not bot_in_channel:
+                    # Bot should join the channel
+                    try:
+                        voice_client = await after.channel.connect()
+                        
+                        # Wait a moment for connection to stabilize
+                        await asyncio.sleep(0.5)
+                        
+                        # Determine which sound to play
+                        soundPath = self.get_user_sound(member.id)
 
-                    # Play the greeting sound
-                    src = discord.PCMVolumeTransformer(
-                        discord.FFmpegPCMAudio(soundPath)
-                    )
-                    voice_client.play(
-                        src,
-                        after=lambda e: print("Player error: %s" % e) if e else None,
-                    )
-                except Exception as e:
-                    print(f"Error joining channel: {e}")
-            else:
-                # Bot is already in the channel, just play the sound
-                for vc in self.bot.voice_clients:
-                    if vc.channel.id == after.channel.id:
-                        soundPath = ""
-                        if user_id_anders == member.id:
-                            soundPath = get_sound_with_name("vinslov_moven.wav")
-                        elif user_id_fritjof == member.id:
-                            soundPath = get_sound_with_name("radooradooradooradoo.wav")
-                        elif user_id_kristian == member.id:
-                            soundPath = get_sound_with_name(
-                                "Har_du_tur_sa_kommer_det_ett_fax.wav"
-                            )
-                        elif user_id_linus == member.id:
-                            soundPath = get_sound_with_name("jövvla_jag_känner.wav")
-                        elif user_id_max == member.id:
-                            soundPath = get_sound_with_name("campa_i_klaveret_intro.wav")
-                        elif user_id_nils == member.id:
-                            soundPath = get_sound_with_name("A_har_nat_frunntimmer.wav")
-                        elif user_id_philip == member.id:
-                            soundPath = get_sound_with_name("Hasten_sa_va_fan.wav")
-                        elif user_id_rickard == member.id:
-                            soundPath = get_sound_with_name("Nar_hon_var_pa_djurparken.wav")
-                        elif user_id_beebop == member.id:
-                            soundPath = get_sound_with_name("snickeriet1.wav")
-                        elif user_id_niklas == member.id:
-                            soundPath = get_sound_with_name("flöjtfars.wav")
-                        else:
-                            soundPath = get_random_fars_sound()
-
+                        # Play the greeting sound
                         src = discord.PCMVolumeTransformer(
                             discord.FFmpegPCMAudio(soundPath)
                         )
-                        vc.play(
+                        voice_client.play(
                             src,
                             after=lambda e: print("Player error: %s" % e) if e else None,
                         )
-                        break
+                    except Exception as e:
+                        print(f"Error joining channel: {e}")
+                else:
+                    # Bot is already in the channel, just play the sound
+                    for vc in self.bot.voice_clients:
+                        if vc.channel.id == monitored_voice_channel_id:
+                            soundPath = self.get_user_sound(member.id)
 
-        # User left a voice channel
-        if before.channel and (not after.channel or before.channel.id != after.channel.id):
-            # Only respond if user left the monitored channel
-            if before.channel.id != monitored_voice_channel_id:
-                return
-            # Check if bot is in the channel the user left
-            for vc in self.bot.voice_clients:
-                if vc.channel.id == before.channel.id:
-                    # Count remaining non-bot members
-                    non_bot_count = self.count_non_bot_members(before.channel)
-                    
-                    # If no other users remain, disconnect
-                    if non_bot_count == 0:
-                        await vc.disconnect()
-                    break
+                            src = discord.PCMVolumeTransformer(
+                                discord.FFmpegPCMAudio(soundPath)
+                            )
+                            vc.play(
+                                src,
+                                after=lambda e: print("Player error: %s" % e) if e else None,
+                            )
+                            break
+
+        # User left the monitored voice channel
+        if before.channel and before.channel.id == monitored_voice_channel_id:
+            # Only act if they're not still in this channel
+            if not after.channel or after.channel.id != monitored_voice_channel_id:
+                # Check if bot is in the monitored channel
+                for vc in self.bot.voice_clients:
+                    if vc.channel.id == monitored_voice_channel_id:
+                        # Count non-bot members still in the channel (excluding the one who just left)
+                        remaining_users = [m for m in vc.channel.members if not m.bot and m.id != member.id]
+                        
+                        # If no other users remain, disconnect
+                        if len(remaining_users) == 0:
+                            await vc.disconnect()
+                        break
 
 
 i = discord.Intents.default()
