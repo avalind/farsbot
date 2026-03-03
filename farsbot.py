@@ -169,6 +169,7 @@ async def call_openrouter(api_key, original_image_uri, grid_image_uri, prompt):
             result = await resp.json()
     images = result["choices"][0]["message"].get("images", [])
     if not images:
+        logging.warning("OpenRouter returned no images. Response: %s", result)
         return None
     b64_url = images[0]["image_url"]["url"]
     # Strip the data URI prefix
