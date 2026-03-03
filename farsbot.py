@@ -22,7 +22,7 @@ import re
 nest_asyncio.apply()
 logging.basicConfig(filename="farsbot.log", level=logging.DEBUG)
 
-FAXIFY_PROMPT = "Replace all the faces in the first image with random ones from the second."
+FAXIFY_PROMPT = "Replace all the faces in the first image with random ones from the second. Each face in the first image should be replace with exactly one face from the second image. Remove background from the faces in the second image if needed."
 OPENROUTER_MODEL = "google/gemini-3.1-flash-image-preview"
 
 user_id_anders = 801923008532578354
