@@ -6,15 +6,24 @@ import json
 import os
 
 import asyncio
+import base64
+import io
+import math
+
 import nest_asyncio
 import yt_dlp as youtube_dl
 import discord
 from discord.ext import commands
+from PIL import Image
 from systemd import journal
+import aiohttp
 import re
 
 nest_asyncio.apply()
 logging.basicConfig(filename="farsbot.log", level=logging.DEBUG)
+
+FAXIFY_PROMPT = "Replace all the faces in the first image with random ones from the second."
+OPENROUTER_MODEL = "google/gemini-3.1-flash-image-preview"
 
 user_id_anders = 801923008532578354
 user_id_fritjof = 560877870076133378
@@ -95,10 +104,83 @@ def load_token(filename="token.json"):
     return js["token"]
 
 
+def load_openrouter_key(filename="openrouter.json"):
+    with open(filename) as handle:
+        js = json.load(handle)
+    return js["api_key"]
+
+
+def synthesize_face_grid(faces_dir="faces"):
+    image_files = glob.glob("{}/*.*".format(faces_dir))
+    if not image_files:
+        return None
+    images = [Image.open(f) for f in image_files]
+    max_w = max(img.width for img in images)
+    max_h = max(img.height for img in images)
+    cols = math.ceil(math.sqrt(len(images)))
+    rows = math.ceil(len(images) / cols)
+    grid = Image.new("RGBA", (cols * max_w, rows * max_h), (0, 0, 0, 0))
+    for idx, img in enumerate(images):
+        col = idx % cols
+        row = idx // cols
+        x = col * max_w + (max_w - img.width) // 2
+        y = row * max_h + (max_h - img.height) // 2
+        grid.paste(img, (x, y))
+    return grid
+
+
+def image_to_base64_uri(img):
+    buf = io.BytesIO()
+    img.save(buf, format="PNG")
+    b64 = base64.b64encode(buf.getvalue()).decode("utf-8")
+    return "data:image/png;base64,{}".format(b64)
+
+
+def bytes_to_base64_uri(data, content_type="image/png"):
+    b64 = base64.b64encode(data).decode("utf-8")
+    return "data:{};base64,{}".format(content_type, b64)
+
+
+async def call_openrouter(api_key, original_image_uri, grid_image_uri, prompt):
+    payload = {
+        "model": OPENROUTER_MODEL,
+        "modalities": ["image", "text"],
+        "messages": [
+            {
+                "role": "user",
+                "content": [
+                    {"type": "image_url", "image_url": {"url": original_image_uri}},
+                    {"type": "image_url", "image_url": {"url": grid_image_uri}},
+                    {"type": "text", "text": prompt},
+                ],
+            }
+        ],
+    }
+    headers = {
+        "Authorization": "Bearer {}".format(api_key),
+        "Content-Type": "application/json",
+    }
+    async with aiohttp.ClientSession() as session:
+        async with session.post(
+            "https://openrouter.ai/api/v1/chat/completions",
+            json=payload,
+            headers=headers,
+        ) as resp:
+            result = await resp.json()
+    images = result["choices"][0]["message"].get("images", [])
+    if not images:
+        return None
+    b64_url = images[0]["image_url"]["url"]
+    # Strip the data URI prefix
+    b64_data = b64_url.split(",", 1)[1]
+    return base64.b64decode(b64_data)
+
+
 class FarsBot(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
         self.queue = []
+        self.openrouter_key = load_openrouter_key()
 
     def check_queue(self, client):
         if len(self.queue) > 0:
@@ -260,6 +342,54 @@ class FarsBot(commands.Cog):
     async def highfive(self, ctx, category=""):
         await ctx.channel.send(
             file=discord.File(get_reaction_image_with_name("highfive.png"))
+        )
+
+    @commands.command()
+    async def faxify(self, ctx):
+        if not ctx.message.reference:
+            await ctx.send("Du måste svara på ett meddelande med en bild.")
+            return
+        ref_msg = await ctx.channel.fetch_message(ctx.message.reference.message_id)
+        image_url = None
+        content_type = "image/png"
+        for att in ref_msg.attachments:
+            if att.content_type and att.content_type.startswith("image/"):
+                image_url = att.url
+                content_type = att.content_type
+                break
+        if not image_url:
+            for embed in ref_msg.embeds:
+                if embed.image:
+                    image_url = embed.image.url
+                    break
+                if embed.thumbnail:
+                    image_url = embed.thumbnail.url
+                    break
+        if not image_url:
+            await ctx.send("Kunde inte hitta en bild i det meddelandet.")
+            return
+        async with aiohttp.ClientSession() as session:
+            async with session.get(image_url) as resp:
+                original_bytes = await resp.read()
+        grid_img = synthesize_face_grid()
+        if grid_img is None:
+            await ctx.send("Inga bilder hittades i faces-mappen.")
+            return
+        original_uri = bytes_to_base64_uri(original_bytes, content_type)
+        grid_uri = image_to_base64_uri(grid_img)
+        try:
+            result_bytes = await call_openrouter(
+                self.openrouter_key, original_uri, grid_uri, FAXIFY_PROMPT
+            )
+        except Exception as e:
+            logging.error("Faxify OpenRouter error: %s", e)
+            await ctx.send("Något gick fel med faxifieringen.")
+            return
+        if not result_bytes:
+            await ctx.send("Modellen returnerade ingen bild.")
+            return
+        await ctx.send(
+            file=discord.File(io.BytesIO(result_bytes), filename="faxified.png")
         )
 
     @commands.command()
