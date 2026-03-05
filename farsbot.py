@@ -6,15 +6,30 @@ import json
 import os
 
 import asyncio
+import base64
+import io
+import math
+
 import nest_asyncio
 import yt_dlp as youtube_dl
 import discord
 from discord.ext import commands
+from PIL import Image
 from systemd import journal
+import aiohttp
 import re
 
 nest_asyncio.apply()
-logging.basicConfig(filename="farsbot.log", level=logging.DEBUG)
+logging.basicConfig(
+    level=logging.INFO,
+    handlers=[
+        logging.FileHandler("farsbot.log"),
+        logging.StreamHandler(),
+    ],
+)
+
+FAXIFY_PROMPT = "Replace all the faces in the first image with random ones from the second. Each face in the first image should be replace with exactly one face from the second image. Remove background from the faces in the second image if needed. Do not change anything else in the first image."
+OPENROUTER_MODEL = "bytedance-seed/seedream-4.5"
 
 user_id_anders = 801923008532578354
 user_id_fritjof = 560877870076133378
@@ -95,10 +110,121 @@ def load_token(filename="token.json"):
     return js["token"]
 
 
+def load_openrouter_key(filename="openrouter.json"):
+    with open(filename) as handle:
+        js = json.load(handle)
+    return js["api_key"]
+
+
+FACE_TILE_MAX = 256
+
+
+def synthesize_face_grid(faces_dir="faces"):
+    image_files = glob.glob("{}/*.*".format(faces_dir))
+    if not image_files:
+        return None
+    images = []
+    for f in image_files:
+        img = Image.open(f).convert("RGBA")
+        img.thumbnail((FACE_TILE_MAX, FACE_TILE_MAX), Image.LANCZOS)
+        images.append(img)
+    max_w = max(img.width for img in images)
+    max_h = max(img.height for img in images)
+    cols = math.ceil(math.sqrt(len(images)))
+    rows = math.ceil(len(images) / cols)
+    grid = Image.new("RGBA", (cols * max_w, rows * max_h), (0, 0, 0, 0))
+    for idx, img in enumerate(images):
+        col = idx % cols
+        row = idx // cols
+        x = col * max_w + (max_w - img.width) // 2
+        y = row * max_h + (max_h - img.height) // 2
+        grid.paste(img, (x, y))
+    return grid
+
+
+MAX_IMAGE_DIMENSION = 2048
+
+
+def downscale_image(img, max_dim=MAX_IMAGE_DIMENSION):
+    if max(img.size) > max_dim:
+        img.thumbnail((max_dim, max_dim), Image.LANCZOS)
+    return img
+
+
+def image_to_base64_uri(img):
+    img = downscale_image(img.copy())
+    buf = io.BytesIO()
+    img.save(buf, format="PNG")
+    b64 = base64.b64encode(buf.getvalue()).decode("utf-8")
+    return "data:image/png;base64,{}".format(b64)
+
+
+def bytes_to_base64_uri(data):
+    img = Image.open(io.BytesIO(data))
+    img = downscale_image(img)
+    buf = io.BytesIO()
+    img.save(buf, format="PNG")
+    b64 = base64.b64encode(buf.getvalue()).decode("utf-8")
+    return "data:image/png;base64,{}".format(b64)
+
+
+async def call_openrouter(api_key, image_urls, prompt):
+    payload = {
+        "model": OPENROUTER_MODEL,
+        "modalities": ["image"],
+        "messages": [
+            {
+                "role": "user",
+                "content": [
+                    *[{"type": "image_url", "image_url": {"url": url}} for url in image_urls],
+                    {"type": "text", "text": prompt},
+                ],
+            }
+        ],
+    }
+    headers = {
+        "Authorization": "Bearer {}".format(api_key),
+        "Content-Type": "application/json",
+    }
+    async with aiohttp.ClientSession() as session:
+        async with session.post(
+            "https://openrouter.ai/api/v1/chat/completions",
+            json=payload,
+            headers=headers,
+        ) as resp:
+            if resp.status != 200:
+                body = await resp.text()
+                logging.error("OpenRouter HTTP %s: %s", resp.status, body[:500])
+                return None
+            result = await resp.json()
+    logging.info("OpenRouter response: %s", result)
+    choices = result.get("choices", [])
+    if not choices:
+        logging.error("OpenRouter returned no choices. Response: %s", result)
+        return None
+    message = choices[0].get("message", {})
+    # Try images field (Gemini-style response)
+    images = message.get("images", [])
+    if images:
+        b64_url = images[0]["image_url"]["url"]
+        b64_data = b64_url.split(",", 1)[1]
+        return base64.b64decode(b64_data)
+    # Try inline base64 in content (Seedream-style response)
+    content = message.get("content", "")
+    if "data:image" in content:
+        b64_url = content.strip()
+        b64_data = b64_url.split(",", 1)[1]
+        return base64.b64decode(b64_data)
+    logging.error("OpenRouter returned no images. Response: %s", result)
+    return None
+
+
 class FarsBot(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
         self.queue = []
+        self.openrouter_key = load_openrouter_key()
+        self._voice_connecting = False
 
     def check_queue(self, client):
         if len(self.queue) > 0:
@@ -263,12 +389,59 @@ class FarsBot(commands.Cog):
         )
 
     @commands.command()
+    async def faxify(self, ctx):
+        if not ctx.message.reference:
+            await ctx.send("Du måste svara på ett meddelande med en bild.")
+            return
+        ref_msg = await ctx.channel.fetch_message(ctx.message.reference.message_id)
+        image_url = None
+        for att in ref_msg.attachments:
+            if att.content_type and att.content_type.startswith("image/"):
+                image_url = att.url
+                break
+        if not image_url:
+            for embed in ref_msg.embeds:
+                if embed.image:
+                    image_url = embed.image.url
+                    break
+                if embed.thumbnail:
+                    image_url = embed.thumbnail.url
+                    break
+        if not image_url:
+            await ctx.send("Kunde inte hitta en bild i det meddelandet.")
+            return
+        async with aiohttp.ClientSession() as session:
+            async with session.get(image_url) as resp:
+                original_bytes = await resp.read()
+        grid_img = synthesize_face_grid()
+        if grid_img is None:
+            await ctx.send("Inga bilder hittades i faces-mappen.")
+            return
+        original_uri = bytes_to_base64_uri(original_bytes)
+        grid_uri = image_to_base64_uri(grid_img)
+        try:
+            result_bytes = await call_openrouter(
+                self.openrouter_key, [original_uri, grid_uri], FAXIFY_PROMPT
+            )
+        except Exception as e:
+            logging.error("Faxify OpenRouter error: %s", e)
+            await ctx.send("Något gick fel med faxifieringen.")
+            return
+        if not result_bytes:
+            await ctx.send("Modellen returnerade ingen bild.")
+            return
+        await ctx.send(
+            file=discord.File(io.BytesIO(result_bytes), filename="faxified.png")
+        )
+
+    @commands.command()
     async def stop(self, ctx):
         if ctx.voice_client:
             await ctx.voice_client.disconnect()
 
     @commands.Cog.listener()
     async def on_voice_state_update(self, member, before, after):
+        logging.info(f"Voice state update: member={member} (bot={member.bot}), before={before.channel}, after={after.channel}")
         # Ignore bot's own voice state changes
         if member.bot:
             return
@@ -287,13 +460,16 @@ class FarsBot(commands.Cog):
                 )
                 
                 if not bot_in_channel:
+                    if self._voice_connecting:
+                        return
+                    self._voice_connecting = True
                     # Bot should join the channel
                     try:
                         voice_client = await after.channel.connect()
-                        
+
                         # Wait a moment for connection to stabilize
                         await asyncio.sleep(0.5)
-                        
+
                         # Determine which sound to play
                         soundPath = self.get_user_sound(member.id)
 
@@ -307,6 +483,8 @@ class FarsBot(commands.Cog):
                         )
                     except Exception as e:
                         print(f"Error joining channel: {e}")
+                    finally:
+                        self._voice_connecting = False
                 else:
                     # Bot is already in the channel, just play the sound
                     for vc in self.bot.voice_clients:
@@ -393,12 +571,18 @@ bot = commands.Bot(
 )
 
 
+@bot.event
+async def on_ready():
+    logging.info(f"Bot ready. Guilds: {[g.name for g in bot.guilds]}. Cogs: {list(bot.cogs.keys())}")
+
+
 async def main():
     t = load_token()
 
     async with bot:
         await bot.add_cog(FarsBot(bot))
-        await bot.run(t)
+        logging.info(f"Cog added. Listeners: {bot.extra_events}")
+        await bot.start(t)
 
 
 if __name__ == "__main__":
