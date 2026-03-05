@@ -120,7 +120,7 @@ def synthesize_face_grid(faces_dir="faces"):
     image_files = glob.glob("{}/*.*".format(faces_dir))
     if not image_files:
         return None
-    images = [Image.open(f) for f in image_files]
+    images = [Image.open(f).convert("RGBA") for f in image_files]
     max_w = max(img.width for img in images)
     max_h = max(img.height for img in images)
     cols = math.ceil(math.sqrt(len(images)))
@@ -171,6 +171,10 @@ async def call_openrouter(api_key, image_urls, prompt):
             json=payload,
             headers=headers,
         ) as resp:
+            if resp.status != 200:
+                body = await resp.text()
+                logging.error("OpenRouter HTTP %s: %s", resp.status, body[:500])
+                return None
             result = await resp.json()
     logging.info("OpenRouter response: %s", result)
     choices = result.get("choices", [])
