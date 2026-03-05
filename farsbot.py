@@ -389,14 +389,19 @@ class FarsBot(commands.Cog):
         if not image_url:
             await ctx.send("Kunde inte hitta en bild i det meddelandet.")
             return
+        async with aiohttp.ClientSession() as session:
+            async with session.get(image_url) as resp:
+                original_bytes = await resp.read()
+                content_type = resp.content_type or "image/png"
         grid_img = synthesize_face_grid()
         if grid_img is None:
             await ctx.send("Inga bilder hittades i faces-mappen.")
             return
+        original_uri = bytes_to_base64_uri(original_bytes, content_type)
         grid_uri = image_to_base64_uri(grid_img)
         try:
             result_bytes = await call_openrouter(
-                self.openrouter_key, [image_url, grid_uri], FAXIFY_PROMPT
+                self.openrouter_key, [original_uri, grid_uri], FAXIFY_PROMPT
             )
         except Exception as e:
             logging.error("Faxify OpenRouter error: %s", e)
