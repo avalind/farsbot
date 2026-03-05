@@ -21,7 +21,7 @@ import re
 
 nest_asyncio.apply()
 logging.basicConfig(
-    level=logging.DEBUG,
+    level=logging.INFO,
     handlers=[
         logging.FileHandler("farsbot.log"),
         logging.StreamHandler(),
@@ -116,11 +116,18 @@ def load_openrouter_key(filename="openrouter.json"):
     return js["api_key"]
 
 
+FACE_TILE_MAX = 256
+
+
 def synthesize_face_grid(faces_dir="faces"):
     image_files = glob.glob("{}/*.*".format(faces_dir))
     if not image_files:
         return None
-    images = [Image.open(f).convert("RGBA") for f in image_files]
+    images = []
+    for f in image_files:
+        img = Image.open(f).convert("RGBA")
+        img.thumbnail((FACE_TILE_MAX, FACE_TILE_MAX), Image.LANCZOS)
+        images.append(img)
     max_w = max(img.width for img in images)
     max_h = max(img.height for img in images)
     cols = math.ceil(math.sqrt(len(images)))
@@ -135,16 +142,30 @@ def synthesize_face_grid(faces_dir="faces"):
     return grid
 
 
+MAX_IMAGE_DIMENSION = 2048
+
+
+def downscale_image(img, max_dim=MAX_IMAGE_DIMENSION):
+    if max(img.size) > max_dim:
+        img.thumbnail((max_dim, max_dim), Image.LANCZOS)
+    return img
+
+
 def image_to_base64_uri(img):
+    img = downscale_image(img.copy())
     buf = io.BytesIO()
     img.save(buf, format="PNG")
     b64 = base64.b64encode(buf.getvalue()).decode("utf-8")
     return "data:image/png;base64,{}".format(b64)
 
 
-def bytes_to_base64_uri(data, content_type="image/png"):
-    b64 = base64.b64encode(data).decode("utf-8")
-    return "data:{};base64,{}".format(content_type, b64)
+def bytes_to_base64_uri(data):
+    img = Image.open(io.BytesIO(data))
+    img = downscale_image(img)
+    buf = io.BytesIO()
+    img.save(buf, format="PNG")
+    b64 = base64.b64encode(buf.getvalue()).decode("utf-8")
+    return "data:image/png;base64,{}".format(b64)
 
 
 async def call_openrouter(api_key, image_urls, prompt):
@@ -392,12 +413,11 @@ class FarsBot(commands.Cog):
         async with aiohttp.ClientSession() as session:
             async with session.get(image_url) as resp:
                 original_bytes = await resp.read()
-                content_type = resp.content_type or "image/png"
         grid_img = synthesize_face_grid()
         if grid_img is None:
             await ctx.send("Inga bilder hittades i faces-mappen.")
             return
-        original_uri = bytes_to_base64_uri(original_bytes, content_type)
+        original_uri = bytes_to_base64_uri(original_bytes)
         grid_uri = image_to_base64_uri(grid_img)
         try:
             result_bytes = await call_openrouter(
