@@ -20,7 +20,13 @@ import aiohttp
 import re
 
 nest_asyncio.apply()
-logging.basicConfig(filename="farsbot.log", level=logging.DEBUG)
+logging.basicConfig(
+    level=logging.DEBUG,
+    handlers=[
+        logging.FileHandler("farsbot.log"),
+        logging.StreamHandler(),
+    ],
+)
 
 FAXIFY_PROMPT = "Replace all the faces in the first image with random ones from the second. Each face in the first image should be replace with exactly one face from the second image. Remove background from the faces in the second image if needed."
 OPENROUTER_MODEL = "bytedance-seed/seedream-4.5"
@@ -401,7 +407,7 @@ class FarsBot(commands.Cog):
 
     @commands.Cog.listener()
     async def on_voice_state_update(self, member, before, after):
-        print(f"Voice state update: member={member} (bot={member.bot}), before={before.channel}, after={after.channel}")
+        logging.info(f"Voice state update: member={member} (bot={member.bot}), before={before.channel}, after={after.channel}")
         # Ignore bot's own voice state changes
         if member.bot:
             return
@@ -533,7 +539,7 @@ bot = commands.Bot(
 
 @bot.event
 async def on_ready():
-    print(f"Bot ready. Guilds: {[g.name for g in bot.guilds]}. Cogs: {list(bot.cogs.keys())}")
+    logging.info(f"Bot ready. Guilds: {[g.name for g in bot.guilds]}. Cogs: {list(bot.cogs.keys())}")
 
 
 async def main():
@@ -541,7 +547,7 @@ async def main():
 
     async with bot:
         await bot.add_cog(FarsBot(bot))
-        print(f"Cog added. Listeners: {bot.extra_events}")
+        logging.info(f"Cog added. Listeners: {bot.extra_events}")
         await bot.start(t)
 
 
