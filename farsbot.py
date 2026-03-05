@@ -531,12 +531,18 @@ bot = commands.Bot(
 )
 
 
+@bot.event
+async def on_ready():
+    print(f"Bot ready. Guilds: {[g.name for g in bot.guilds]}. Cogs: {list(bot.cogs.keys())}")
+
+
 async def main():
     t = load_token()
 
     async with bot:
         await bot.add_cog(FarsBot(bot))
-        await bot.run(t)
+        print(f"Cog added. Listeners: {bot.extra_events}")
+        await bot.start(t)
 
 
 if __name__ == "__main__":
