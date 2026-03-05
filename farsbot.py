@@ -23,7 +23,7 @@ nest_asyncio.apply()
 logging.basicConfig(filename="farsbot.log", level=logging.DEBUG)
 
 FAXIFY_PROMPT = "Replace all the faces in the first image with random ones from the second. Each face in the first image should be replace with exactly one face from the second image. Remove background from the faces in the second image if needed."
-OPENROUTER_MODEL = "google/gemini-3.1-flash-image-preview"
+OPENROUTER_MODEL = "bytedance-seed/seedream-4.5"
 
 user_id_anders = 801923008532578354
 user_id_fritjof = 560877870076133378
@@ -182,6 +182,7 @@ class FarsBot(commands.Cog):
         self.bot = bot
         self.queue = []
         self.openrouter_key = load_openrouter_key()
+        self._voice_connecting = False
 
     def check_queue(self, client):
         if len(self.queue) > 0:
@@ -418,13 +419,16 @@ class FarsBot(commands.Cog):
                 )
                 
                 if not bot_in_channel:
+                    if self._voice_connecting:
+                        return
+                    self._voice_connecting = True
                     # Bot should join the channel
                     try:
                         voice_client = await after.channel.connect()
-                        
+
                         # Wait a moment for connection to stabilize
                         await asyncio.sleep(0.5)
-                        
+
                         # Determine which sound to play
                         soundPath = self.get_user_sound(member.id)
 
@@ -438,6 +442,8 @@ class FarsBot(commands.Cog):
                         )
                     except Exception as e:
                         print(f"Error joining channel: {e}")
+                    finally:
+                        self._voice_connecting = False
                 else:
                     # Bot is already in the channel, just play the sound
                     for vc in self.bot.voice_clients:
