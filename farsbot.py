@@ -147,16 +147,15 @@ def bytes_to_base64_uri(data, content_type="image/png"):
     return "data:{};base64,{}".format(content_type, b64)
 
 
-async def call_openrouter(api_key, original_image_uri, grid_image_uri, prompt):
+async def call_openrouter(api_key, image_urls, prompt):
     payload = {
         "model": OPENROUTER_MODEL,
-        "modalities": ["image", "text"],
+        "modalities": ["image"],
         "messages": [
             {
                 "role": "user",
                 "content": [
-                    {"type": "image_url", "image_url": {"url": original_image_uri}},
-                    {"type": "image_url", "image_url": {"url": grid_image_uri}},
+                    *[{"type": "image_url", "image_url": {"url": url}} for url in image_urls],
                     {"type": "text", "text": prompt},
                 ],
             }
@@ -173,14 +172,26 @@ async def call_openrouter(api_key, original_image_uri, grid_image_uri, prompt):
             headers=headers,
         ) as resp:
             result = await resp.json()
-    images = result["choices"][0]["message"].get("images", [])
-    if not images:
-        print("OpenRouter returned no images. Response: {}".format(result))
+    logging.info("OpenRouter response: %s", result)
+    choices = result.get("choices", [])
+    if not choices:
+        logging.error("OpenRouter returned no choices. Response: %s", result)
         return None
-    b64_url = images[0]["image_url"]["url"]
-    # Strip the data URI prefix
-    b64_data = b64_url.split(",", 1)[1]
-    return base64.b64decode(b64_data)
+    message = choices[0].get("message", {})
+    # Try images field (Gemini-style response)
+    images = message.get("images", [])
+    if images:
+        b64_url = images[0]["image_url"]["url"]
+        b64_data = b64_url.split(",", 1)[1]
+        return base64.b64decode(b64_data)
+    # Try inline base64 in content (Seedream-style response)
+    content = message.get("content", "")
+    if "data:image" in content:
+        b64_url = content.strip()
+        b64_data = b64_url.split(",", 1)[1]
+        return base64.b64decode(b64_data)
+    logging.error("OpenRouter returned no images. Response: %s", result)
+    return None
 
 
 class FarsBot(commands.Cog):
@@ -359,11 +370,9 @@ class FarsBot(commands.Cog):
             return
         ref_msg = await ctx.channel.fetch_message(ctx.message.reference.message_id)
         image_url = None
-        content_type = "image/png"
         for att in ref_msg.attachments:
             if att.content_type and att.content_type.startswith("image/"):
                 image_url = att.url
-                content_type = att.content_type
                 break
         if not image_url:
             for embed in ref_msg.embeds:
@@ -376,18 +385,14 @@ class FarsBot(commands.Cog):
         if not image_url:
             await ctx.send("Kunde inte hitta en bild i det meddelandet.")
             return
-        async with aiohttp.ClientSession() as session:
-            async with session.get(image_url) as resp:
-                original_bytes = await resp.read()
         grid_img = synthesize_face_grid()
         if grid_img is None:
             await ctx.send("Inga bilder hittades i faces-mappen.")
             return
-        original_uri = bytes_to_base64_uri(original_bytes, content_type)
         grid_uri = image_to_base64_uri(grid_img)
         try:
             result_bytes = await call_openrouter(
-                self.openrouter_key, original_uri, grid_uri, FAXIFY_PROMPT
+                self.openrouter_key, [image_url, grid_uri], FAXIFY_PROMPT
             )
         except Exception as e:
             logging.error("Faxify OpenRouter error: %s", e)
