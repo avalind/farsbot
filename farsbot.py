@@ -28,7 +28,7 @@ logging.basicConfig(
     ],
 )
 
-FAXIFY_PROMPT = "Replace all the faces in the first image with random ones from the second. Each face in the first image should be replace with exactly one face from the second image. Remove background from the faces in the second image if needed. Do not change anything else in the first image."
+FAXIFY_PROMPT = "Replace all the faces in the first image with random ones from the second. Each face in the first image should be replaced with exactly one face from the second image. Remove background from the faces in the second image if needed. Do not change anything else in the first image. Make sure all the faces in the first image are replaced. Do not leave any unreplaced face!"
 OPENROUTER_MODEL = "bytedance-seed/seedream-4.5"
 
 user_id_anders = 801923008532578354
