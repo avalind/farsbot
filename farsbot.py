@@ -28,8 +28,9 @@ logging.basicConfig(
     ],
 )
 
-FAXIFY_PROMPT = "Replace all the faces in the first image with random ones from the second. Each face in the first image should be replaced with exactly one face from the second image. Remove background from the faces in the second image if needed. Do not change anything else in the first image. Make sure all the faces in the first image are replaced. Do not leave any unreplaced face!"
-OPENROUTER_MODEL = "bytedance-seed/seedream-4.5"
+FAXIFY_PROMPT = "Swap all faces between the first and second image."
+OPENROUTER_MODEL = "openai/gpt-5-image-mini"
+OPENROUTER_REASONING_EFFORT = "low"
 
 user_id_anders = 801923008532578354
 user_id_fritjof = 560877870076133378
@@ -171,7 +172,8 @@ def bytes_to_base64_uri(data):
 async def call_openrouter(api_key, image_urls, prompt):
     payload = {
         "model": OPENROUTER_MODEL,
-        "modalities": ["image"],
+        "modalities": ["image", "text"],
+        "reasoning": {"effort": OPENROUTER_REASONING_EFFORT},
         "messages": [
             {
                 "role": "user",
