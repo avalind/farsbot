@@ -28,9 +28,9 @@ logging.basicConfig(
     ],
 )
 
-FAXIFY_PROMPT = "Swap all faces between the first and second image."
+FAXIFY_PROMPT = "Here are two images. The first contains at least one person. The second is a collage of different faces. Your job is to replace all faces in the first image with random faces from the second. Don't change any face features, just copy verbatim from the second image to the first image."
 OPENROUTER_MODEL = "openai/gpt-5-image-mini"
-OPENROUTER_REASONING_EFFORT = "low"
+OPENROUTER_REASONING_EFFORT = "medium"
 
 user_id_anders = 801923008532578354
 user_id_fritjof = 560877870076133378
