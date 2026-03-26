@@ -179,7 +179,7 @@ async def call_openrouter(api_key, image_urls, prompt):
                 logging.error("OpenRouter HTTP %s: %s", resp.status, body[:500])
                 return None
             result = await resp.json()
-    logging.info("OpenRouter response: %s", result)
+    logging.info("OpenRouter response status: choices=%d", len(result.get("choices", [])))
     choices = result.get("choices", [])
     if not choices:
         logging.error("OpenRouter returned no choices. Response: %s", result)
