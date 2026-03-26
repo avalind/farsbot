@@ -8,7 +8,6 @@ import os
 import asyncio
 import base64
 import io
-import math
 
 import nest_asyncio
 import yt_dlp as youtube_dl
@@ -28,7 +27,7 @@ logging.basicConfig(
     ],
 )
 
-FAXIFY_PROMPT = "Here are two images. The first contains at least one person. The second is a collage of different faces. Your job is to replace all faces in the first image with random faces from the second. Replace the entire head. Don't change any face features, just copy verbatim from the second image to the first image."
+FAXIFY_PROMPT = "Here are two images. The first contains at least one person. The second is an image of a face. Your job is to replace all faces in the first image with the face from the second. Replace the entire head. Exaggerate facial features and mood."
 OPENROUTER_MODEL = "openai/gpt-5-image-mini"
 OPENROUTER_REASONING_EFFORT = "medium"
 
@@ -117,30 +116,11 @@ def load_openrouter_key(filename="openrouter.json"):
     return js["api_key"]
 
 
-FACE_TILE_MAX = 256
-
-
-def synthesize_face_grid(faces_dir="faces"):
+def get_random_face(faces_dir="faces"):
     image_files = glob.glob("{}/*.*".format(faces_dir))
     if not image_files:
         return None
-    images = []
-    for f in image_files:
-        img = Image.open(f).convert("RGBA")
-        img.thumbnail((FACE_TILE_MAX, FACE_TILE_MAX), Image.LANCZOS)
-        images.append(img)
-    max_w = max(img.width for img in images)
-    max_h = max(img.height for img in images)
-    cols = math.ceil(math.sqrt(len(images)))
-    rows = math.ceil(len(images) / cols)
-    grid = Image.new("RGBA", (cols * max_w, rows * max_h), (0, 0, 0, 0))
-    for idx, img in enumerate(images):
-        col = idx % cols
-        row = idx // cols
-        x = col * max_w + (max_w - img.width) // 2
-        y = row * max_h + (max_h - img.height) // 2
-        grid.paste(img, (x, y))
-    return grid
+    return Image.open(random.choice(image_files)).convert("RGBA")
 
 
 MAX_IMAGE_DIMENSION = 2048
@@ -415,15 +395,15 @@ class FarsBot(commands.Cog):
         async with aiohttp.ClientSession() as session:
             async with session.get(image_url) as resp:
                 original_bytes = await resp.read()
-        grid_img = synthesize_face_grid()
-        if grid_img is None:
+        face_img = get_random_face()
+        if face_img is None:
             await ctx.send("Inga bilder hittades i faces-mappen.")
             return
         original_uri = bytes_to_base64_uri(original_bytes)
-        grid_uri = image_to_base64_uri(grid_img)
+        face_uri = image_to_base64_uri(face_img)
         try:
             result_bytes = await call_openrouter(
-                self.openrouter_key, [original_uri, grid_uri], FAXIFY_PROMPT
+                self.openrouter_key, [original_uri, face_uri], FAXIFY_PROMPT
             )
         except Exception as e:
             logging.error("Faxify OpenRouter error: %s", e)
