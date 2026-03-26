@@ -27,7 +27,7 @@ logging.basicConfig(
     ],
 )
 
-FAXIFY_PROMPT = "Here are two images. The first contains at least one person. The second is an image of a face. Your job is to replace all faces in the first image with the face from the second. Replace the entire head. Exaggerate facial features and mood."
+FAXIFY_PROMPT = "Here are two images. The first contains at least one person. The second is an image of a face. Your job is to replace all faces in the first image with the face from the second. Replace the entire head. Make sure any headgear or hats follow along. Exaggerate facial features and mood."
 OPENROUTER_MODEL = "openai/gpt-5-image-mini"
 OPENROUTER_REASONING_EFFORT = "medium"
 
