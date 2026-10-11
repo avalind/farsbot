@@ -57,7 +57,12 @@ ytdl_cfg = {
     "default_search": "auto",
     "source_address": "0.0.0.0",
     "outtmpl": "songcache/%(original_url)s.%(ext)s",
+    "postprocessors": [{"key": "FFmpegMetadata", "add_metadata": True}],
 }
+
+LOCAL_MUSIC_GLOBS = ["musik/*/*.*", "songcache/*.*"]
+AUDIO_EXTENSIONS = {".mp3", ".wav", ".ogg", ".opus", ".m4a", ".webm", ".flac"}
+DISCORD_MSG_LIMIT = 1900
 
 ytdl = youtube_dl.YoutubeDL(ytdl_cfg)
 
@@ -94,6 +99,93 @@ def get_random_fars_sound(sound_dir="", ending=".wav", base_dir="sounds"):
     if sound_dir in valid_dirs:
         return random.choice(glob.glob("{}/{}/*{}".format(base_dir, sound_dir, ending)))
     return random.choice(glob.glob("{}/*/*{}".format(base_dir, ending)))
+
+
+def get_local_music_files():
+    files = []
+    for pattern in LOCAL_MUSIC_GLOBS:
+        for path in sorted(glob.glob(pattern)):
+            if os.path.splitext(path)[1].lower() in AUDIO_EXTENSIONS:
+                files.append(path)
+    return files
+
+
+async def read_audio_tags(path):
+    try:
+        proc = await asyncio.create_subprocess_exec(
+            "ffprobe", "-v", "quiet", "-print_format", "json",
+            "-show_format", "-show_streams", path,
+            stdout=asyncio.subprocess.PIPE,
+            stderr=asyncio.subprocess.DEVNULL,
+        )
+        out, _ = await proc.communicate()
+        info = json.loads(out or "{}")
+    except Exception as e:
+        logging.error("ffprobe failed for %s: %s", path, e)
+        return {}
+    tags = {}
+    # Ogg/Opus keeps tags on the stream, most other containers on the format
+    streams = info.get("streams") or [{}]
+    for source in (streams[0].get("tags", {}), info.get("format", {}).get("tags", {})):
+        tags.update({k.lower(): v for k, v in source.items()})
+    return tags
+
+
+_display_name_cache = {}
+_ffprobe_semaphore = asyncio.Semaphore(8)
+
+
+async def get_display_name(path):
+    try:
+        mtime = os.path.getmtime(path)
+    except OSError:
+        mtime = None
+    cached = _display_name_cache.get(path)
+    if cached and cached[0] == mtime:
+        return cached[1]
+    async with _ffprobe_semaphore:
+        tags = await read_audio_tags(path)
+    title = tags.get("title", "").strip()
+    artist = tags.get("artist", "").strip()
+    if title and artist:
+        name = "{} - {}".format(artist, title)
+    elif title:
+        name = title
+    else:
+        name = os.path.splitext(os.path.basename(path))[0].replace("_", " ")
+    parts = path.split(os.sep)
+    if parts[0] == "musik" and len(parts) > 2:
+        name = "[{}] {}".format(parts[1], name)
+    _display_name_cache[path] = (mtime, name)
+    return name
+
+
+async def get_display_names(paths):
+    return await asyncio.gather(*(get_display_name(p) for p in paths))
+
+
+def search_numbered(files, names, sokord):
+    sokord = sokord.lower()
+    return [
+        (nr, path, name)
+        for nr, (path, name) in enumerate(zip(files, names), start=1)
+        if sokord in name.lower() or sokord in os.path.basename(path).lower()
+    ]
+
+
+async def send_code_block(ctx, header, lines):
+    chunks = []
+    current = ""
+    for line in lines:
+        if current and len(current) + len(line) + 1 > DISCORD_MSG_LIMIT:
+            chunks.append(current)
+            current = ""
+        current += line + "\n"
+    if current:
+        chunks.append(current)
+    for i, chunk in enumerate(chunks):
+        prefix = header + "\n" if i == 0 and header else ""
+        await ctx.send("{}```\n{}```".format(prefix, chunk))
 
 
 def get_random_fars_image(img_dir=""):
@@ -290,13 +382,11 @@ class FarsBot(commands.Cog):
     async def birger_queue(self, ctx, url=""):
         if len(url) != 0:
             self.queue.append(await YTDLSource.from_url(url, loop=self.bot.loop))
+        elif not self.queue:
+            await ctx.send("Kön är tom.")
         else:
-            str_to_send = "Kön:\n```"
-            for f in self.queue:
-                base, filename = f.split("/")
-                str_to_send += "\t*{0}\n".format(filename)
-            str_to_send += "```"
-            await ctx.send(str_to_send)
+            names = await get_display_names(self.queue)
+            await send_code_block(ctx, "Kön:", ["\t*{0}".format(n) for n in names])
 
     @commands.command()
     async def birger_clean(self, ctx):
@@ -334,6 +424,60 @@ class FarsBot(commands.Cog):
                 client.resume()
 
     @commands.command()
+    async def birger_lista(self, ctx, *, sokord=""):
+        files = get_local_music_files()
+        names = await get_display_names(files)
+        matches = search_numbered(files, names, sokord.strip())
+        lines = ["{0}. {1}".format(nr, name) for nr, _, name in matches]
+        if not lines:
+            await ctx.send("Hittade inga låtar.")
+            return
+        await send_code_block(ctx, "Lokala låtar:", lines)
+
+    @commands.command()
+    async def birger_lokal(self, ctx, *, val=""):
+        if not self.bot.voice_clients:
+            await ctx.send("Jag är inte i någon röstkanal.")
+            return
+        val = val.strip()
+        if not val:
+            await ctx.send("Ange ett nummer eller sökord, se !birger_lista.")
+            return
+        files = get_local_music_files()
+        if val.isdigit():
+            nr = int(val)
+            if not 1 <= nr <= len(files):
+                await ctx.send("Det finns ingen låt nummer {}.".format(nr))
+                return
+            path = files[nr - 1]
+        else:
+            names = await get_display_names(files)
+            matches = search_numbered(files, names, val)
+            if not matches:
+                await ctx.send("Hittade ingen låt som matchar '{}'.".format(val))
+                return
+            if len(matches) > 1:
+                lines = ["{0}. {1}".format(nr, name) for nr, _, name in matches[:10]]
+                if len(matches) > 10:
+                    lines.append("... och {} till".format(len(matches) - 10))
+                await send_code_block(
+                    ctx, "Var mer specifik eller använd numret:", lines
+                )
+                return
+            _, path, _ = matches[0]
+        name = await get_display_name(path)
+        client = self.bot.voice_clients[0]
+        if client.is_playing() or client.is_paused():
+            self.queue.append(path)
+            await ctx.send("Köad: {}".format(name))
+        else:
+            client.play(
+                discord.FFmpegPCMAudio(source=path),
+                after=lambda e: self.check_queue(client),
+            )
+            await ctx.send("Spelar: {}".format(name))
+
+    @commands.command()
     async def birger(self, ctx):
         """
         Shows the api for the music part (birger) of farsbot.
@@ -348,7 +492,9 @@ class FarsBot(commands.Cog):
 !birger_play - utan url för att spela från kön. \n\
 !birger_skip för att skippa \n\
 !birger_queue utan url för att visa kön. \n\
-!birger_clean för att tömma kön.```"
+!birger_clean för att tömma kön. \n\
+!birger_lista [sökord] - visa lokala låtar. \n\
+!birger_lokal <nummer|sökord> - spela eller köa en lokal låt.```"
         )
         await ctx.send(str_to_send)
 
